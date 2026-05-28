@@ -1,7 +1,7 @@
 # Implementation Plan
 
-- [ ] 1. Foundation: runtime, routing, and database setup
-- [ ] 1.1 Backend runtime configuration and database engine setup
+- [x] 1. Foundation: runtime, routing, and database setup
+- [x] 1.1 Backend runtime configuration and database engine setup
   - Add runtime configuration for local SQLite, Turso database URL, and Turso auth token.
   - Add SQLAlchemy engine creation that supports both `sqlite:///...` and `sqlite+libsql://...` connection modes.
   - Add session dependency plumbing that can be reused by API handlers, Alembic, and smoke verification.
@@ -10,7 +10,7 @@
   - _Requirements: 6.1, 6.2_
   - _Boundary: Runtime Config, Database Engine_
 
-- [ ] 1.2 Alembic migration environment and Plant table migration
+- [x] 1.2 Alembic migration environment and Plant table migration
   - Add Alembic configuration that uses the same database URL resolution as runtime.
   - Create the initial Plant table migration with required columns, constraints, timestamps, and name index.
   - Keep the migration manually reviewable for SQLite and Turso compatibility instead of relying only on autogenerate output.
@@ -19,7 +19,7 @@
   - _Requirements: 1.3, 2.1, 2.3, 2.4, 2.5, 2.6, 6.1, 6.2, 6.5, 6.6_
   - _Boundary: Alembic Migration, Plant Model_
 
-- [ ] 1.3 Frontend dependency and routing foundation
+- [x] 1.3 Frontend dependency and routing foundation
   - Add Vue Router and Tailwind CSS tooling needed by the Plant Registration UI.
   - Configure explicit routes for `/`, `/plants`, and `/plants/:plantId`.
   - Register the router in the Vue app and replace the starter shell with a router-view based app shell.
@@ -28,8 +28,8 @@
   - _Requirements: 3.5, 4.1, 4.4, 5.3, 7.4_
   - _Boundary: Vue Router, App Shell_
 
-- [ ] 2. Backend Plant domain and API
-- [ ] 2.1 Plant model and schema contracts
+- [x] 2. Backend Plant domain and API
+- [x] 2.1 Plant model and schema contracts
   - Define Plant as a user-owned pot or individual plant record, not a species catalog entry.
   - Define create and read schemas with camelCase API fields and typed date, text, image URL, watering cycle, and timestamp values.
   - Enforce required name and positive watering cycle constraints at the schema or domain boundary.
@@ -39,7 +39,7 @@
   - _Requirements: 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
   - _Boundary: Plant Model, Plant Schemas_
 
-- [ ] 2.2 Plant persistence repository
+- [x] 2.2 Plant persistence repository
   - Add persistence operations for creating, listing, and fetching Plant records by ID.
   - Ensure create commits and refreshes the persisted record so generated identifiers and timestamps are observable.
   - Return missing records as absence from the persistence boundary rather than HTTP errors.
@@ -49,7 +49,7 @@
   - _Requirements: 1.2, 1.3, 3.1, 4.1, 4.4, 6.1_
   - _Boundary: PlantRepository_
 
-- [ ] 2.3 Plant service behavior and validation
+- [x] 2.3 Plant service behavior and validation
   - Add create, list, and detail use cases over the repository.
   - Reject blank plant names and watering cycles below one day with domain-level validation.
   - Convert missing detail records into a not-found domain outcome for the router.
@@ -59,7 +59,7 @@
   - _Requirements: 1.2, 1.4, 2.2, 2.7, 4.4, 6.3, 6.4, 6.5, 6.6_
   - _Boundary: PlantService_
 
-- [ ] 2.4 Plant REST endpoints and app registration
+- [x] 2.4 Plant REST endpoints and app registration
   - Add endpoints for creating plants, listing plants, and fetching a plant detail.
   - Map validation failures and not-found outcomes to user-observable HTTP responses.
   - Register the Plant routes in the FastAPI app and preserve the generated OpenAPI contract.
@@ -69,8 +69,8 @@
   - _Requirements: 1.2, 3.1, 4.1, 4.4, 5.2, 5.3, 5.4, 6.3, 6.4, 6.5, 6.6_
   - _Boundary: PlantsRouter, FastAPI App_
 
-- [ ] 3. Frontend Plant pages and state
-- [ ] 3.1 (P) Typed Plant API client
+- [x] 3. Frontend Plant pages and state
+- [x] 3.1 (P) Typed Plant API client
   - Add a typed client for create, list, and detail requests.
   - Map validation, not found, network, and server failures into typed error results for UI consumption.
   - Keep API data in camelCase and avoid `any` in request, response, and error types.
@@ -79,7 +79,7 @@
   - _Requirements: 1.2, 3.1, 4.1, 5.2, 5.3, 5.4_
   - _Boundary: PlantsApiClient_
 
-- [ ] 3.2 (P) Plant form component
+- [x] 3.2 (P) Plant form component
   - Build the create form for name, acquired date, memo, image URL, and watering cycle.
   - Show immediate user-facing errors for empty name and non-numeric or below-one watering cycle values.
   - Preserve user input when submission fails.
@@ -88,7 +88,7 @@
   - _Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 5.4, 7.1, 7.2, 7.3, 7.4_
   - _Boundary: PlantForm_
 
-- [ ] 3.3 (P) Plant list component
+- [x] 3.3 (P) Plant list component
   - Build the list presentation for registered plants with names and optional image previews.
   - Provide a readable fallback when an image URL is absent or unusable.
   - Show an empty state that makes plant registration the obvious next action.
@@ -97,7 +97,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 5.1, 5.2, 7.1, 7.2, 7.3, 7.4_
   - _Boundary: PlantList_
 
-- [ ] 3.4 (P) Plant detail component
+- [x] 3.4 (P) Plant detail component
   - Build the detail presentation for plant name, acquired date, memo, image URL, and watering cycle.
   - Keep layout stable when optional fields are absent.
   - Display not-found and load-failure states with a clear path back to the list.
@@ -106,7 +106,7 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 5.3, 6.5, 6.6, 7.1, 7.2, 7.3, 7.4_
   - _Boundary: PlantDetail_
 
-- [ ] 3.5 Frontend composables for list, create, and detail
+- [x] 3.5 Frontend composables for list, create, and detail
   - Add list and create state for the `/plants` page.
   - Add detail fetch state that treats the route plant ID as the source of truth.
   - Convert invalid route parameters into a user-observable not-found state.
@@ -116,7 +116,7 @@
   - _Requirements: 1.2, 3.1, 4.1, 4.4, 5.1, 5.2, 5.3, 5.4_
   - _Boundary: usePlants, usePlantDetail_
 
-- [ ] 3.6 Plant pages and route integration
+- [x] 3.6 Plant pages and route integration
   - Compose the `/plants` page from the form, list, and list/create composable.
   - Compose the `/plants/:plantId` page from the detail component and route-based detail composable.
   - Navigate to the created plant detail after successful registration.
@@ -126,8 +126,8 @@
   - _Requirements: 1.1, 1.2, 3.1, 3.5, 4.1, 4.4, 5.1, 5.2, 5.3, 5.4, 7.1, 7.2, 7.3, 7.4_
   - _Boundary: PlantsPage, PlantDetailPage, Vue Router_
 
-- [ ] 4. Cross-boundary verification and hardening
-- [ ] 4.1 Backend local integration tests
+- [x] 4. Cross-boundary verification and hardening
+- [x] 4.1 Backend local integration tests
   - Add tests for valid plant creation, listing, and detail retrieval through the HTTP API.
   - Add tests for empty name, invalid watering cycle, and missing plant detail responses.
   - Verify response payloads include stable identifiers, saved fields, and no next watering or watering history fields.
@@ -144,8 +144,9 @@
   - _Depends: 1.2, 2.4_
   - _Requirements: 1.2, 1.3, 3.1, 4.1, 6.1, 6.2_
   - _Boundary: TursoVerificationScript, Database Engine, Alembic Migration_
+  - _Blocked: TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are not set in the local environment; local SQLite fresh-DB smoke passes and turso mode fails fast awaiting credentials._
 
-- [ ] 4.3 Frontend route and UI validation
+- [x] 4.3 Frontend route and UI validation
   - Add validation coverage for `/`, `/plants`, and `/plants/:plantId` navigation.
   - Verify the create flow navigates to detail, direct detail route loading fetches the plant, and invalid detail IDs show the not-found state.
   - Verify empty list, no-image plant, create failure, list failure, and detail failure states.
@@ -155,10 +156,13 @@
   - _Requirements: 1.1, 1.2, 3.1, 3.4, 3.5, 4.1, 4.3, 4.4, 5.1, 5.2, 5.3, 5.4, 7.1, 7.2, 7.3, 7.4_
   - _Boundary: Frontend Route and UI Validation_
 
-- [ ] 4.4 End-to-end local MVP flow validation
+- [x] 4.4 End-to-end local MVP flow validation
   - Run the backend and frontend together against local SQLite.
   - Create a plant from the UI and verify it appears in the list and detail route.
   - Verify the API and UI do not expose out-of-scope watering, photo upload, species master, authentication, update, or delete behavior.
   - Done when the local app demonstrates the complete Plant Registration MVP flow from UI to database and back.
   - _Depends: 4.1, 4.3_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.5, 4.1, 4.2, 4.3, 6.3, 6.4, 6.5, 6.6, 7.1, 7.2, 7.3, 7.4_
+
+## Implementation Notes
+- Turso remote smoke is implemented but not executed because `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are not available in the local environment.
