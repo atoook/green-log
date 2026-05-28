@@ -136,7 +136,7 @@
   - _Requirements: 1.2, 1.3, 2.2, 2.7, 3.1, 3.2, 4.1, 4.4, 6.1, 6.2, 6.3, 6.4_
   - _Boundary: Backend Integration Tests_
 
-- [ ] 4.2 Turso migration and CRUD smoke verification
+- [x] 4.2 Turso migration and CRUD smoke verification
   - Add a smoke verification command for Turso/libSQL connection, migration target, Plant create/list/detail, and type round trip checks.
   - Verify UUID text, UTC datetime, and boolean storage behavior against local SQLite and Turso.
   - Fail fast when Turso credentials are missing for Turso mode and print a clear verification summary.
@@ -144,7 +144,7 @@
   - _Depends: 1.2, 2.4_
   - _Requirements: 1.2, 1.3, 3.1, 4.1, 6.1, 6.2_
   - _Boundary: TursoVerificationScript, Database Engine, Alembic Migration_
-  - _Blocked: TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are not set in the local environment; local SQLite fresh-DB smoke passes and turso mode fails fast awaiting credentials._
+  - _Verified: Turso mode smoke passed against the configured development database with Alembic migration, Plant CRUD, UUID text, UTC datetime text, and boolean round-trip checks._
 
 - [x] 4.3 Frontend route and UI validation
   - Add validation coverage for `/`, `/plants`, and `/plants/:plantId` navigation.
@@ -165,4 +165,4 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.5, 4.1, 4.2, 4.3, 6.3, 6.4, 6.5, 6.6, 7.1, 7.2, 7.3, 7.4_
 
 ## Implementation Notes
-- Turso remote smoke is implemented but not executed because `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are not available in the local environment.
+- Turso remote smoke passed using `backend/.env` credentials. The smoke command verified Alembic migration, minimal Plant CRUD, UUID text, UTC datetime text, and boolean round-trip behavior against the configured development database.

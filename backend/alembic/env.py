@@ -1,10 +1,10 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 from app.core.config import get_settings
+from app.db.engine import create_database_engine, normalize_database_url
 from app.models.plant import Plant  # noqa: F401
 
 config = context.config
@@ -15,8 +15,12 @@ if config.config_file_name is not None:
 target_metadata = SQLModel.metadata
 
 
+def get_migration_settings():
+    return config.attributes.get("settings") or get_settings()
+
+
 def get_url() -> str:
-    return get_settings().resolved_database_url
+    return normalize_database_url(get_migration_settings().resolved_database_url)
 
 
 def run_migrations_offline() -> None:
@@ -32,13 +36,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = get_url()
-    connectable = engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    connectable = create_database_engine(get_migration_settings())
 
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
