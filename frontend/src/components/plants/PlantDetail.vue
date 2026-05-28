@@ -1,0 +1,63 @@
+<script setup lang="ts">
+import type { ApiError, Plant } from '../../types/plant'
+
+defineProps<{
+  plant: Plant | null
+  isLoading: boolean
+  error: ApiError | null
+}>()
+
+const emit = defineEmits<{
+  back: []
+}>()
+</script>
+
+<template>
+  <section class="rounded-lg border border-stone-200 bg-white p-4">
+    <button class="mb-4 text-sm font-semibold text-leaf-700" type="button" @click="emit('back')">
+      一覧へ戻る
+    </button>
+
+    <p v-if="isLoading" class="text-sm text-stone-600">読み込んでいます</p>
+
+    <div v-else-if="error" class="rounded-md bg-red-50 p-4 text-sm text-red-800">
+      {{ error.message }}
+    </div>
+
+    <article v-else-if="plant" class="grid gap-4">
+      <img
+        v-if="plant.imageUrl"
+        class="aspect-[4/3] w-full rounded-md object-cover"
+        :src="plant.imageUrl"
+        :alt="plant.name"
+      />
+      <div v-else class="flex aspect-[4/3] w-full items-center justify-center rounded-md bg-leaf-50 text-leaf-700">
+        植物の写真はまだありません
+      </div>
+
+      <div>
+        <p class="text-sm font-semibold text-leaf-700">植物の記録</p>
+        <h1 class="mt-1 text-3xl font-semibold text-stone-950">{{ plant.name }}</h1>
+      </div>
+
+      <dl class="grid gap-3 text-sm">
+        <div class="rounded-md bg-stone-50 p-3">
+          <dt class="font-semibold text-stone-950">家に来た日</dt>
+          <dd class="text-stone-700">{{ plant.acquiredDate || '未記録' }}</dd>
+        </div>
+        <div class="rounded-md bg-stone-50 p-3">
+          <dt class="font-semibold text-stone-950">水やり周期</dt>
+          <dd class="text-stone-700">{{ plant.wateringCycleDays }}日ごと</dd>
+        </div>
+        <div class="rounded-md bg-stone-50 p-3">
+          <dt class="font-semibold text-stone-950">メモ</dt>
+          <dd class="whitespace-pre-wrap text-stone-700">{{ plant.memo || '未記録' }}</dd>
+        </div>
+        <div class="rounded-md bg-stone-50 p-3">
+          <dt class="font-semibold text-stone-950">画像 URL</dt>
+          <dd class="break-all text-stone-700">{{ plant.imageUrl || '未記録' }}</dd>
+        </div>
+      </dl>
+    </article>
+  </section>
+</template>
