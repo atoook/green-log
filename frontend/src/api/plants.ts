@@ -2,19 +2,31 @@ import type { ApiError, Plant, PlantCreateInput } from '../types/plant'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
+export function createApiError(
+  type: ApiError['type'],
+  message: string,
+  fieldErrors?: Record<string, string>,
+): ApiError {
+  const error = new Error(message) as ApiError
+  error.name = 'PlantApiError'
+  error.type = type
+  error.fieldErrors = fieldErrors
+  return error
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
 
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
       headers: {
         'Content-Type': 'application/json',
         ...(init?.headers ?? {}),
       },
-      ...init,
     })
   } catch {
-    throw { type: 'network', message: '接続できませんでした' } as ApiError
+    throw createApiError('network', '接続できませんでした')
   }
 
   if (response.ok) {
@@ -22,19 +34,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (response.status === 404) {
-    throw { type: 'not_found', message: '植物が見つかりません' } as ApiError
+    throw createApiError('not_found', '植物が見つかりません')
   }
 
   if (response.status === 422) {
     const body = (await response.json()) as { detail?: unknown }
-    throw {
-      type: 'validation',
-      message: parseValidationMessage(body.detail),
-      fieldErrors: {},
-    } as ApiError
+    throw createApiError('validation', parseValidationMessage(body.detail), {})
   }
 
-  throw { type: 'server', message: '記録を読み込めませんでした' } as ApiError
+  throw createApiError('server', '記録を読み込めませんでした')
 }
 
 function parseValidationMessage(detail: unknown): string {

@@ -10,7 +10,7 @@ from alembic.config import Config
 from sqlalchemy import text
 from sqlmodel import Session
 
-from app.core.config import Settings, get_settings
+from app.core.config import Settings
 from app.db.engine import create_database_engine
 from app.repositories.plant_repository import PlantRepository
 from app.schemas.plant import PlantCreate
@@ -18,14 +18,6 @@ from app.services.plant_service import PlantService
 
 
 def run_migrations(settings: Settings) -> None:
-    os.environ["DATABASE_URL"] = settings.resolved_database_url
-    if settings.turso_auth_token:
-        os.environ["TURSO_DATABASE_URL"] = settings.resolved_database_url
-        os.environ["TURSO_AUTH_TOKEN"] = settings.turso_auth_token
-    else:
-        os.environ.pop("TURSO_DATABASE_URL", None)
-        os.environ.pop("TURSO_AUTH_TOKEN", None)
-    get_settings.cache_clear()
     config = Config("alembic.ini")
     config.attributes["settings"] = settings
     command.upgrade(config, "head")

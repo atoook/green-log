@@ -25,8 +25,9 @@ export interface PlantFormState {
   wateringCycleDays: string
 }
 
-export type ApiError =
-  | { type: 'validation'; message: string; fieldErrors: Record<string, string> }
-  | { type: 'not_found'; message: string }
-  | { type: 'network'; message: string }
-  | { type: 'server'; message: string }
+export type ApiErrorType = 'validation' | 'not_found' | 'network' | 'server'
+
+export interface ApiError extends Error {
+  type: ApiErrorType
+  fieldErrors?: Record<string, string>
+}

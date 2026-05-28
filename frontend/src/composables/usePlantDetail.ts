@@ -1,5 +1,5 @@
 import { onMounted, ref, watch, type Ref } from 'vue'
-import { getPlant } from '../api/plants'
+import { createApiError, getPlant } from '../api/plants'
 import type { ApiError, Plant } from '../types/plant'
 
 export function usePlantDetail(plantIdParam: Ref<string | string[]>) {
@@ -17,7 +17,7 @@ export function usePlantDetail(plantIdParam: Ref<string | string[]>) {
     const plantId = parsePlantId()
     if (plantId === null) {
       plant.value = null
-      error.value = { type: 'not_found', message: '植物が見つかりません' }
+      error.value = createApiError('not_found', '植物が見つかりません')
       return
     }
 
