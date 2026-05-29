@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
+from app.core.config import Settings
 from app.db.session import get_session
 from app.main import app
 from app.models.plant import Plant
@@ -125,3 +126,43 @@ def test_repository_timestamp_and_optional_fields_round_trip():
     assert payload["imageUrl"] is None
     assert payload["createdAt"].endswith("Z")
     assert payload["updatedAt"].endswith("Z")
+
+
+def test_cors_allows_configured_frontend_origin():
+    client = TestClient(app)
+
+    response = client.options(
+        "/plants",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+def test_settings_parses_cors_origins_from_comma_separated_value():
+    settings = Settings(
+        cors_allow_origins=" http://localhost:5173, https://green-log.example.com ,,"
+    )
+
+    assert settings.cors_origin_list == [
+        "http://localhost:5173",
+        "https://green-log.example.com",
+    ]
+
+
+def test_settings_reads_cors_origins_from_environment(monkeypatch):
+    monkeypatch.setenv(
+        "CORS_ALLOW_ORIGINS",
+        "https://green-log.example.com,https://preview.green-log.example.com",
+    )
+
+    settings = Settings()
+
+    assert settings.cors_origin_list == [
+        "https://green-log.example.com",
+        "https://preview.green-log.example.com",
+    ]
