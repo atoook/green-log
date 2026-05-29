@@ -250,3 +250,114 @@ Option C: Hybrid Approach を第一候補として設計するのが妥当。
 - 他ユーザー所有の detail/update/delete は 404 とし、一覧は current user 所有分のみ返す方針が要件と合う。
 - Webhook は application user 作成の必須経路ではなく、profile/status 同期の補助経路として扱うと初回ログイン時の user 作成要件を満たしやすい。
 - Requirements 未承認のため、設計前に「未認証時 UX」「既存 Plant data の扱い」「disabled/deleted user の user-facing response」を確認すると手戻りが減る。
+
+---
+
+## Design Discovery Update
+
+### Summary
+- **Feature**: `auth-authorization-foundation`
+- **Discovery Scope**: Complex Integration
+- **Key Findings**:
+  - Clerk Vue SDK は `clerkPlugin` と `VITE_CLERK_PUBLISHABLE_KEY` を使い、`SignedIn`, `SignedOut`, `SignInButton`, `UserButton`, `useAuth` を提供するため、Green Mate 側は auth UI と token injection を wrapper 化すればよい。
+  - Clerk Python SDK は backend request authentication を提供し、secret key と authorized parties を使う。FastAPI `Request` との接続は `ClerkSessionVerifier` adapter に閉じる設計にした。
+  - Clerk webhook は `user.created`, `user.updated`, `user.deleted` を同期対象にし、Svix 署名検証後に idempotent upsert/status update へ渡す。
+
+## Research Log
+
+### Clerk Vue SDK integration
+- **Context**: Requirement 1 と Frontend auth shell の設計。
+- **Sources Consulted**: Clerk Vue quickstart and component reference via Context7.
+- **Findings**:
+  - Vue app は `clerkPlugin` に publishable key を渡して初期化する。
+  - `SignedIn`, `SignedOut`, `SignInButton`, `UserButton`, `SignOutButton`, `useAuth` が利用できる。
+  - publishable key は frontend env であり secret ではない。
+- **Implications**:
+  - `main.ts` が Clerk provider を所有する。
+  - `AuthGate.vue` と `AuthHeaderControls.vue` を作り、Plant component へ Clerk 依存を漏らさない。
+
+### Clerk Python request authentication
+- **Context**: Requirement 2, 3, 4, 8 の Backend current user 設計。
+- **Sources Consulted**: Clerk Python SDK docs via Context7.
+- **Findings**:
+  - Python SDK は `authenticate_request` と authorized parties option を提供する。
+  - SDK examples は `httpx.Request` を使うため、FastAPI/Starlette `Request` との bridging を設計上の明示境界にする必要がある。
+- **Implications**:
+  - `ClerkSessionVerifier` が SDK integration adapter となる。
+  - Router/Service/Repository は Clerk SDK を直接 import しない。
+
+### Webhook verification and user sync
+- **Context**: Requirement 7 の user synchronization。
+- **Sources Consulted**: Clerk webhook syncing docs and Svix Python library docs via Context7.
+- **Findings**:
+  - Clerk は user lifecycle event を webhook で提供する。
+  - webhook は署名検証後に処理する必要がある。
+  - Svix は webhook signature verification の Python library を提供する。
+- **Implications**:
+  - `WebhookRouter` が raw body と headers を扱い、`ClerkWebhookService` は検証済み event だけを処理する。
+  - webhook は lazy upsert の補助同期とし、初回 API access の user 作成要件を阻害しない。
+
+### FastAPI integration points
+- **Context**: Protected route dependency と raw body webhook endpoint。
+- **Sources Consulted**: FastAPI dependency/security/raw body docs via Context7.
+- **Findings**:
+  - FastAPI dependency injection は auth dependency を route に注入する設計に合う。
+  - raw body は `Request.body()` で取得でき、OpenAPI の request body は必要に応じて明示できる。
+- **Implications**:
+  - `get_current_user` は dependency として Router 層に置く。
+  - webhook endpoint は Pydantic parse 前の raw payload を verification に渡す。
+
+## Architecture Pattern Evaluation
+
+| Option | Description | Strengths | Risks / Limitations | Notes |
+|--------|-------------|-----------|---------------------|-------|
+| Extend Existing Components | Plant router/service/repository と API client に auth を直接追加 | 初期変更が少ない | 共通基盤として再利用しづらい | Plant 固有に寄りすぎるため不採用 |
+| Create New Components | auth/user/authorization を完全分離 | 境界が明確 | 小さい codebase には重い | 一部採用 |
+| Hybrid Boundary | auth/user は新設し、Plant は owner-aware に拡張 | 要件と既存構造の均衡がよい | file 数と調整点は増える | 採用 |
+
+## Design Decisions
+
+### Decision: Hybrid auth boundary
+- **Context**: 認証・認可は後続 domain が使うが、最初の適用先は Plant。
+- **Alternatives Considered**:
+  1. Plant に直接 Clerk 認証を組み込む。
+  2. 完全な provider abstraction を作る。
+  3. auth/user は新設し、Plant は owner id を受ける。
+- **Selected Approach**: Option 3。
+- **Rationale**: Clerk 依存を auth 境界に閉じ、Plant は internal owner id だけを見るため、将来 domain が再利用しやすい。
+- **Trade-offs**: 初期 file 数は増えるが、責務分離と testability が上がる。
+- **Follow-up**: tasks では auth/user と Plant owner scope を別境界に分ける。
+
+### Decision: Lazy upsert plus webhook sync
+- **Context**: 初回ログイン時に application user が作成され、webhook 遅延に依存しない必要がある。
+- **Alternatives Considered**:
+  1. webhook-first。
+  2. API lazy upsert only。
+  3. lazy upsert を主経路、webhook を profile/status 補助同期。
+- **Selected Approach**: Option 3。
+- **Rationale**: 初回 API access の確実性と user status 同期の両方を満たす。
+- **Trade-offs**: 同じ user に対する write 経路が複数になるため unique constraint と idempotency が必須。
+- **Follow-up**: user service tests で duplicate request と duplicate webhook を検証する。
+
+### Decision: Owner field hidden from Plant API payloads
+- **Context**: client-supplied owner を信頼しない要件と既存 Plant contract の互換性。
+- **Alternatives Considered**:
+  1. `ownerUserId` を response に出す。
+  2. request だけでなく response でも owner を隠す。
+- **Selected Approach**: request/response とも owner を隠す。
+- **Rationale**: owner は authorization invariant であり user-facing Plant 情報ではない。
+- **Trade-offs**: debugging には DB/test helper が必要。
+- **Follow-up**: OpenAPI contract と frontend type に owner が漏れないことを確認する。
+
+## Risks & Mitigations
+- Clerk Python SDK と FastAPI Request の adapter 実装差分 — `ClerkSessionVerifier` に隔離し、unit test で失敗時の mapping を固定する。
+- 既存 Plant data の owner backfill — migration は explicit backfill config がない場合に停止し、ownerless data を作らない。
+- Webhook retry/duplicate — `users.clerk_user_id` unique constraint と idempotent upsert で吸収する。
+- Frontend token injection 漏れ — common `AuthenticatedApiClient` を通らない API client を review で禁止する。
+
+## References
+- Clerk Vue quickstart and components — `clerkPlugin`, `VITE_CLERK_PUBLISHABLE_KEY`, `SignedIn`, `SignedOut`, `SignInButton`, `UserButton`, `useAuth`
+- Clerk Python SDK request authentication — `authenticate_request`, secret key, authorized parties
+- Clerk webhook syncing docs — `user.created`, `user.updated`, `user.deleted`, verified webhook processing
+- FastAPI dependency and raw request body docs — route dependencies and webhook raw body handling
+- Svix Python webhook library docs — webhook signature verification
