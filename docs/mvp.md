@@ -1,10 +1,10 @@
-# Plant Life Log - MVP Proposal & Technical Design
+# Green Mate - MVP 提案・技術設計
 
 # Overview
 
-## Service Name (Tentative)
+## サービス名
 
-Plant Life Log
+Green Mate
 
 ---
 

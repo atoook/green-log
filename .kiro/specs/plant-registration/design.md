@@ -1,7 +1,7 @@
 # Design Document
 
 ## Overview
-Plant Registration は、Green Log の最初の縦切りとして、ユーザー所有の鉢・個体を登録し、一覧と詳細で確認できる状態を提供する。Backend は Plant 基本情報の authoritative source となり、Frontend は登録・一覧・詳細の mobile first 体験を提供する。
+Plant Registration は、Green Mate の最初の縦切りとして、ユーザー所有の鉢・個体を登録し、一覧と詳細で確認できる状態を提供する。Backend は Plant 基本情報の authoritative source となり、Frontend は登録・一覧・詳細の mobile first 体験を提供する。
 
 この設計は既存の MVP 方針に合わせ、植物種 master、画像 upload、水やり履歴、次回予定計算、認証を取り込まない。後続の Watering Record、Today's Care TODO、Growth Photo Log は、この spec が安定化する Plant ID と基本属性を参照する。
 

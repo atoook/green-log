@@ -2,7 +2,7 @@
 
 ## Architecture
 
-Green Log は `frontend/` と `backend/` を分けた monorepo 構成で開発する。Frontend は Backend の REST API に依存し、Backend が Plant などの永続化データの authoritative source になる。
+Green Mate は `frontend/` と `backend/` を分けた monorepo 構成で開発する。Frontend は Backend の REST API に依存し、Backend が Plant などの永続化データの authoritative source になる。
 
 Backend は Router / Service / Repository / Database の layered architecture を基本にする。HTTP の責務、domain validation、persistence を分け、Repository は HTTP 例外を知らない。
 

@@ -2,7 +2,7 @@
 
 ## Organization Philosophy
 
-Green Log は monorepo 内で Frontend、Backend、Product documentation、Feature specs を分離する。実装は feature の縦切りを作りながらも、Frontend と Backend の内部では layer ごとの責務を保つ。
+Green Mate は monorepo 内で Frontend、Backend、Product documentation、Feature specs を分離する。実装は feature の縦切りを作りながらも、Frontend と Backend の内部では layer ごとの責務を保つ。
 
 新しい feature は、まず `.kiro/specs/` に要求・設計・タスクを残し、実装では既存 layer に沿って必要な file を追加する。steering は directory catalog ではなく、配置判断の基準として使う。
 

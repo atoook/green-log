@@ -114,7 +114,7 @@ def verify_type_round_trip(settings: Settings) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Verify Green Log database CRUD and type behavior.")
+    parser = argparse.ArgumentParser(description="Verify Green Mate database CRUD and type behavior.")
     parser.add_argument("--mode", choices=["local", "turso"], default="local")
     args = parser.parse_args()
 

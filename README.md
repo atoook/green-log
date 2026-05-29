@@ -1,2 +1,5 @@
-# green-log
-A plant care and growth log app for everyday plant life.
+# Green Mate
+
+植物との日々を記録する、観葉植物のお世話・成長記録アプリ。
+
+注: リポジトリ名とローカル作業ディレクトリ名は `green-log` のまま。

@@ -1,4 +1,4 @@
-# Architecture
+# Green Mate アーキテクチャ
 
 # Monorepo Structure
 
@@ -10,6 +10,8 @@ green-log/
 ├── specs/
 └── infra/
 \```
+
+リポジトリ名とワークスペースディレクトリ名は `green-log` のままとし、ユーザー向けのプロダクト表記は Green Mate を使う。
 
 ---
 
