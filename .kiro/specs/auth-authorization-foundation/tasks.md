@@ -9,7 +9,7 @@
   - _Requirements: 2.1, 2.2, 7.3, 8.4, 8.5_
   - _Boundary: Runtime Configuration_
 
-- [ ] 1.2 (P) Frontend の Clerk runtime 設定を追加する
+- [x] 1.2 (P) Frontend の Clerk runtime 設定を追加する
   - `@clerk/vue` を frontend dependency として追加する。
   - publishable key の env 名を定義し、未設定時は保護データを描画しない起動失敗として扱う。
   - frontend に secret key を置かず、設定例にも secret 実値を含めない。
