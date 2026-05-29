@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤設定とデータ所有モデルを準備する
-- [ ] 1.1 Backend の認証関連 runtime 設定を追加する
+- [x] 1.1 Backend の認証関連 runtime 設定を追加する
   - Clerk session 検証と webhook 署名検証に必要な backend dependency を追加する。
   - Clerk secret、authorized parties、webhook secret、legacy owner backfill 設定を runtime settings と env example に追加する。
   - CORS と request header handling が `Authorization` を通せることを確認する。

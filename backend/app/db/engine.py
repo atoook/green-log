@@ -24,8 +24,8 @@ def create_database_engine(settings: Settings | None = None) -> Engine:
     if database_url.startswith("sqlite") and not database_url.startswith("sqlite+libsql"):
         connect_args["check_same_thread"] = False
 
-    if database_url.startswith("sqlite+libsql") and resolved.turso_auth_token:
-        connect_args["auth_token"] = resolved.turso_auth_token
+    if database_url.startswith("sqlite+libsql") and resolved.turso_auth_token_value:
+        connect_args["auth_token"] = resolved.turso_auth_token_value
 
     return create_engine(database_url, connect_args=connect_args)
 

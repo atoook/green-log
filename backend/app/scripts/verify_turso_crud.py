@@ -28,7 +28,7 @@ def build_settings(mode: str) -> Settings:
 
     if mode == "turso":
         turso_url = os.getenv("TURSO_DATABASE_URL") or file_settings.turso_database_url
-        token = os.getenv("TURSO_AUTH_TOKEN") or file_settings.turso_auth_token
+        token = os.getenv("TURSO_AUTH_TOKEN") or file_settings.turso_auth_token_value
         if not turso_url or not token:
             raise RuntimeError("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required for turso mode")
         return Settings(turso_database_url=turso_url, turso_auth_token=token)
