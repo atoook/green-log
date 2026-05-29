@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.routers.plants import router as plants_router
 
-app = FastAPI(title="Green Log API")
+app = FastAPI(title="Green Mate API")
 settings = get_settings()
 
 
@@ -21,4 +21,4 @@ app.include_router(plants_router)
 
 @app.get("/")
 def root():
-    return {"message": "Hello Green Log"}
+    return {"message": "Hello Green Mate"}

@@ -145,24 +145,24 @@ def test_cors_allows_configured_frontend_origin():
 
 def test_settings_parses_cors_origins_from_comma_separated_value():
     settings = Settings(
-        cors_allow_origins=" http://localhost:5173, https://green-log.example.com ,,"
+        cors_allow_origins=" http://localhost:5173, https://green-mate.example.com ,,"
     )
 
     assert settings.cors_origin_list == [
         "http://localhost:5173",
-        "https://green-log.example.com",
+        "https://green-mate.example.com",
     ]
 
 
 def test_settings_reads_cors_origins_from_environment(monkeypatch):
     monkeypatch.setenv(
         "CORS_ALLOW_ORIGINS",
-        "https://green-log.example.com,https://preview.green-log.example.com",
+        "https://green-mate.example.com,https://preview.green-mate.example.com",
     )
 
     settings = Settings()
 
     assert settings.cors_origin_list == [
-        "https://green-log.example.com",
-        "https://preview.green-log.example.com",
+        "https://green-mate.example.com",
+        "https://preview.green-mate.example.com",
     ]

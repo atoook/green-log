@@ -15,7 +15,7 @@
 - **Context**: Plant Registration を既存構成へ追加するため、現状の拡張点を確認した。
 - **Sources Consulted**: `backend/app/main.py`, `backend/requirements.txt`, `frontend/src/App.vue`, `frontend/src/components/HelloWorld.vue`, `frontend/src/style.css`, `frontend/package.json`, `docs/mvp.md`, `docs/architecture.md`
 - **Findings**:
-  - Backend は `FastAPI(title="Green Log API")` と root route のみ。
+  - Backend は `FastAPI(title="Green Mate API")` と root route のみ。
   - Frontend は Vite 初期 UI で、routing、API client、domain type、store は未作成。
   - backend dependencies には FastAPI、Pydantic、SQLModel、SQLAlchemy、Alembic、python-dotenv、uvicorn が含まれる。
   - frontend dependencies は Vue のみで、Vue Router や Pinia は未導入。
