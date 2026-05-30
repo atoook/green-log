@@ -1,10 +1,13 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings
 from app.main import app
+from app.routers.plants import get_plant_service
+from app.schemas.plant import PlantRead
 
 
 def test_create_and_read_plant(protected_client):
@@ -116,6 +119,117 @@ def test_plant_routes_require_authentication(api_client):
         json={"name": "ポトス", "wateringCycleDays": 7},
     ).status_code == 401
     assert client.get("/plants/1").status_code == 401
+
+
+def test_unauthenticated_plant_routes_do_not_execute_service(api_client):
+    calls: list[str] = []
+
+    class FailingPlantService:
+        def list_plants(self, owner_user_id: str):
+            calls.append(f"list:{owner_user_id}")
+            raise AssertionError("Plant service must not run without current user")
+
+        def create_plant(self, owner_user_id: str, payload):
+            calls.append(f"create:{owner_user_id}")
+            raise AssertionError("Plant service must not run without current user")
+
+        def get_plant(self, owner_user_id: str, plant_id: int):
+            calls.append(f"detail:{owner_user_id}:{plant_id}")
+            raise AssertionError("Plant service must not run without current user")
+
+    def fail_if_resolved() -> FailingPlantService:
+        calls.append("dependency")
+        return FailingPlantService()
+
+    app.dependency_overrides[get_plant_service] = fail_if_resolved
+
+    responses = [
+        api_client.get("/plants"),
+        api_client.post("/plants", json={"name": "ポトス", "wateringCycleDays": 7}),
+        api_client.get("/plants/1"),
+    ]
+
+    assert [response.status_code for response in responses] == [401, 401, 401]
+    assert calls == []
+
+
+def test_valid_current_user_reaches_plant_service_with_internal_user_id(
+    api_client,
+    override_current_user,
+):
+    override_current_user("internal-user-id", clerk_user_id="clerk-user-id")
+    calls: list[tuple[str, str, int | None]] = []
+    now = datetime(2026, 5, 30, tzinfo=timezone.utc)
+
+    class SpyPlantService:
+        def list_plants(self, owner_user_id: str) -> list[PlantRead]:
+            calls.append(("list", owner_user_id, None))
+            return []
+
+        def create_plant(self, owner_user_id: str, payload) -> PlantRead:
+            calls.append(("create", owner_user_id, None))
+            return PlantRead(
+                id=42,
+                name=payload.name,
+                acquired_date=payload.acquired_date,
+                memo=payload.memo,
+                image_url=payload.image_url,
+                watering_cycle_days=payload.watering_cycle_days,
+                created_at=now,
+                updated_at=now,
+            )
+
+        def get_plant(self, owner_user_id: str, plant_id: int) -> PlantRead:
+            calls.append(("detail", owner_user_id, plant_id))
+            return PlantRead(
+                id=plant_id,
+                name="内部IDで取得した植物",
+                acquired_date=None,
+                memo=None,
+                image_url=None,
+                watering_cycle_days=7,
+                created_at=now,
+                updated_at=now,
+            )
+
+    app.dependency_overrides[get_plant_service] = lambda: SpyPlantService()
+
+    assert api_client.get("/plants").status_code == 200
+    assert api_client.post(
+        "/plants",
+        json={"name": "ポトス", "wateringCycleDays": 7},
+    ).status_code == 201
+    assert api_client.get("/plants/42").status_code == 200
+
+    assert calls == [
+        ("list", "internal-user-id", None),
+        ("create", "internal-user-id", None),
+        ("detail", "internal-user-id", 42),
+    ]
+
+
+def test_plant_route_policy_only_exposes_owned_plant_endpoints():
+    plant_routes = {
+        (next(iter(route.methods)), route.path)
+        for route in app.routes
+        if isinstance(route, APIRoute) and "plants" in route.tags
+    }
+    app_paths = {
+        route.path
+        for route in app.routes
+        if isinstance(route, APIRoute)
+    }
+
+    assert plant_routes == {
+        ("GET", "/plants"),
+        ("POST", "/plants"),
+        ("GET", "/plants/{plant_id}"),
+    }
+    assert not any(
+        forbidden in path
+        for path in app_paths
+        for forbidden in ("watering", "today", "care", "growth", "photo", "share")
+    )
 
 
 def test_plant_list_and_detail_are_scoped_to_current_user(

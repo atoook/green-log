@@ -157,7 +157,7 @@
   - _Boundary: PlantOwnerScope_
   - _Depends: 1.3_
 
-- [ ] 5.2 Plant router を protected route として current user に接続する
+- [x] 5.2 Plant router を protected route として current user に接続する
   - Plant list、create、detail に current user dependency を適用する。
   - 未認証・無効 token は 401、disabled / deleted user は 403、他ユーザー Plant detail は 404 として扱う。
   - 公開 route から user-owned Plant data が返らないことを route policy として固定する。
