@@ -29,6 +29,8 @@ function listErrorMessage(error: ApiError): string {
       return '植物一覧が見つかりませんでした。'
     case 'validation':
       return '入力内容を確認してください。'
+    default:
+      return '植物一覧を表示できませんでした。時間をおいてもう一度お試しください。'
   }
 }
 

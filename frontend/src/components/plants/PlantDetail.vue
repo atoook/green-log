@@ -25,6 +25,8 @@ function detailErrorMessage(error: ApiError): string {
       return '接続できませんでした。通信環境を確認してからもう一度お試しください。'
     case 'server':
       return '植物の記録を読み込めませんでした。時間をおいてもう一度お試しください。'
+    default:
+      return '植物の記録を表示できませんでした。時間をおいてもう一度お試しください。'
   }
 }
 </script>
