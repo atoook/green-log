@@ -5,7 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
+from app.routers.care import router as care_router
 from app.routers.plants import router as plants_router
+from app.routers.watering import router as watering_router
 from app.routers.webhooks import router as webhooks_router
 
 app = FastAPI(title="Green Mate API")
@@ -21,6 +23,8 @@ app.add_middleware(
 )
 
 app.include_router(plants_router)
+app.include_router(care_router)
+app.include_router(watering_router)
 app.include_router(webhooks_router)
 
 
