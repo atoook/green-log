@@ -45,7 +45,7 @@
   - _Boundary: UserService, UserRepository_
   - _Depends: 1.3_
 
-- [ ] 2.2 (P) ClerkSessionVerifier を実装する
+- [x] 2.2 (P) ClerkSessionVerifier を実装する
   - Bearer token の欠落、期限切れ、無効 token を fail closed の認証失敗に変換する。
   - Clerk SDK と FastAPI request の adapter 境界を verifier に閉じる。
   - valid token から Clerk user id と任意 profile 情報を抽出する。
