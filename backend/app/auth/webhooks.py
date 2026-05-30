@@ -9,7 +9,6 @@ from svix.webhooks import Webhook, WebhookVerificationError
 
 from app.core.config import Settings, get_settings
 
-
 ClerkWebhookEventType = Literal["user.created", "user.updated", "user.deleted"]
 
 
@@ -23,8 +22,10 @@ class ClerkWebhookEvent(BaseModel):
 
 
 class ClerkWebhookVerificationError(ValueError):
-    def __init__(self) -> None:
+    def __init__(self, reason: str = "verification_failed", safe_detail: str | None = None) -> None:
         super().__init__("Webhook verification failed")
+        self.reason = reason
+        self.safe_detail = safe_detail
 
 
 class ClerkWebhookVerifier:
@@ -37,20 +38,25 @@ class ClerkWebhookVerifier:
     async def verify_request(self, request: Request) -> ClerkWebhookEvent:
         secret = self._webhook_secret()
         if secret is None:
-            raise ClerkWebhookVerificationError()
+            raise ClerkWebhookVerificationError(reason="missing_secret")
 
         raw_body = await request.body()
-        headers = self._svix_headers(request.headers)
+        headers = self._webhook_headers(request.headers)
 
         try:
             verified_payload = Webhook(secret).verify(raw_body, headers)
             return self._to_event(verified_payload)
         except ClerkWebhookVerificationError:
             raise
-        except (WebhookVerificationError, ValidationError, TypeError, ValueError) as exc:
-            raise ClerkWebhookVerificationError() from exc
+        except WebhookVerificationError as exc:
+            raise ClerkWebhookVerificationError(
+                reason="signature_verification_failed",
+                safe_detail=str(exc),
+            ) from exc
+        except (ValidationError, TypeError, ValueError) as exc:
+            raise ClerkWebhookVerificationError(reason="payload_parse_failed") from exc
         except Exception as exc:
-            raise ClerkWebhookVerificationError() from exc
+            raise ClerkWebhookVerificationError(reason="unexpected_verification_error") from exc
 
     def _webhook_secret(self) -> str | None:
         secret = self.settings.clerk_webhook_secret
@@ -60,7 +66,7 @@ class ClerkWebhookVerifier:
         return value or None
 
     @classmethod
-    def _svix_headers(cls, headers: Mapping[str, str]) -> dict[str, str]:
+    def _webhook_headers(cls, headers: Mapping[str, str]) -> dict[str, str]:
         return {
             header_name: headers[header_name]
             for header_name in cls._SVIX_HEADER_NAMES
@@ -70,20 +76,20 @@ class ClerkWebhookVerifier:
     @classmethod
     def _to_event(cls, payload: Any) -> ClerkWebhookEvent:
         if not isinstance(payload, Mapping):
-            raise ClerkWebhookVerificationError()
+            raise ClerkWebhookVerificationError(reason="payload_not_mapping")
 
         event_type = cls._non_blank_string(payload.get("type"))
         if event_type not in cls._SUPPORTED_EVENT_TYPES:
-            raise ClerkWebhookVerificationError()
+            raise ClerkWebhookVerificationError(reason="unsupported_event_type")
 
         data = payload.get("data")
         if not isinstance(data, Mapping):
-            raise ClerkWebhookVerificationError()
+            raise ClerkWebhookVerificationError(reason="missing_event_data")
 
         event_id = cls._non_blank_string(payload.get("id"))
         clerk_user_id = cls._non_blank_string(data.get("id"))
         if event_id is None or clerk_user_id is None:
-            raise ClerkWebhookVerificationError()
+            raise ClerkWebhookVerificationError(reason="missing_event_or_user_id")
 
         return ClerkWebhookEvent(
             event_id=event_id,
