@@ -1,8 +1,10 @@
 import { onMounted, ref } from 'vue'
-import { createPlant, listPlants } from '../api/plants'
+import { createPlantsApiClient } from '../api/plants'
 import type { ApiError, Plant, PlantCreateInput } from '../types/plant'
+import { useAuthenticatedApi } from './useAuthenticatedApi'
 
 export function usePlants() {
+  const plantsApiClient = createPlantsApiClient(useAuthenticatedApi())
   const plants = ref<Plant[]>([])
   const isLoadingList = ref(false)
   const isCreating = ref(false)
@@ -12,7 +14,7 @@ export function usePlants() {
     isLoadingList.value = true
     error.value = null
     try {
-      plants.value = await listPlants()
+      plants.value = await plantsApiClient.listPlants()
     } catch (caught) {
       error.value = caught as ApiError
     } finally {
@@ -24,7 +26,7 @@ export function usePlants() {
     isCreating.value = true
     error.value = null
     try {
-      const created = await createPlant(input)
+      const created = await plantsApiClient.createPlant(input)
       plants.value = [created, ...plants.value.filter((plant) => plant.id !== created.id)]
       return created
     } catch (caught) {

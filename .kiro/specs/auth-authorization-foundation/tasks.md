@@ -100,7 +100,7 @@
   - _Boundary: AuthenticatedApiClient_
   - _Depends: 1.2_
 
-- [ ] 3.3 PlantsApiClient と Plant composable を token-aware client へ移行する
+- [x] 3.3 PlantsApiClient と Plant composable を token-aware client へ移行する
   - Plant list、create、detail request が common authenticated client 経由になる。
   - component から直接 fetch せず、既存の page/composable 分離を維持する。
   - request / response 型に owner field を追加せず、client 指定の user id を送らない。
