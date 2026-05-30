@@ -73,7 +73,7 @@ function formatDateTime(value: string): string {
     <ul v-else class="grid gap-3">
       <li v-for="(record, index) in history" :key="record.id" class="rounded-md border border-stone-200 bg-white p-4">
         <article class="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-          <div class="mt-1 h-2.5 w-2.5 rounded-full bg-leaf-500" aria-hidden="true"></div>
+          <div class="mt-1 h-2.5 w-2.5 rounded-full bg-leaf-600" aria-hidden="true"></div>
           <div class="min-w-0 grid gap-2">
             <div class="flex flex-wrap items-start justify-between gap-2">
               <p class="text-sm font-semibold text-stone-950">記録日時</p>

@@ -126,7 +126,7 @@ function statusCardClasses(watering: PlantWateringDetail): string[] {
     return [...baseClasses, 'border-amber-200', 'bg-amber-50', 'text-amber-800']
   }
   if (tone === 'due') {
-    return [...baseClasses, 'border-leaf-200', 'bg-leaf-50', 'text-leaf-700']
+    return [...baseClasses, 'border-leaf-100', 'bg-leaf-50', 'text-leaf-700']
   }
   if (tone === 'overdue') {
     return [...baseClasses, 'border-red-200', 'bg-red-50', 'text-red-700']
