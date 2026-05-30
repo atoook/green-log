@@ -33,12 +33,23 @@ class RejectingWebhookVerifier:
         raise ClerkWebhookVerificationError()
 
 
-def test_main_app_registers_webhook_and_protected_plant_routers():
+def test_main_app_registers_webhook_and_protected_plant_care_routers():
     routes = {
         (method, route.path)
         for route in app.routes
         if isinstance(route, APIRoute)
         for method in route.methods
+    }
+    expected_watering_routes = {
+        ("GET", "/care/today"),
+        ("GET", "/plants/{plant_id}/watering"),
+        ("POST", "/plants/{plant_id}/watering-records"),
+    }
+    openapi_watering_routes = {
+        (method.upper(), path)
+        for path, operations in app.openapi()["paths"].items()
+        if path.startswith("/care") or "watering" in path
+        for method in operations
     }
 
     assert {
@@ -46,7 +57,8 @@ def test_main_app_registers_webhook_and_protected_plant_routers():
         ("POST", "/plants"),
         ("GET", "/plants/{plant_id}"),
         ("POST", "/webhooks/clerk"),
-    }.issubset(routes)
+    }.union(expected_watering_routes).issubset(routes)
+    assert openapi_watering_routes == expected_watering_routes
 
 
 def test_app_level_auth_error_contract_is_401_and_secret_safe(api_client):

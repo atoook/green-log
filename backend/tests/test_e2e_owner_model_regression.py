@@ -119,16 +119,36 @@ def test_owner_model_gate_keeps_adjacent_domain_routes_out_of_scope():
         for method in route.methods
     }
     paths = {path for _, path in routes}
+    watering_mvp_routes = {
+        ("GET", "/care/today"),
+        ("GET", "/plants/{plant_id}/watering"),
+        ("POST", "/plants/{plant_id}/watering-records"),
+    }
+    watering_route_surface = {
+        (method, path)
+        for method, path in routes
+        if path.startswith("/care") or "watering" in path
+    }
 
     assert {("GET", "/plants"), ("POST", "/plants"), ("GET", "/plants/{plant_id}")}.issubset(
         routes
     )
+    assert watering_route_surface == watering_mvp_routes
     assert ("PATCH", "/plants/{plant_id}") not in routes
     assert ("DELETE", "/plants/{plant_id}") not in routes
     assert not any(
         forbidden in path
         for path in paths
-        for forbidden in ("watering", "today", "care", "growth", "photo", "share")
+        for forbidden in (
+            "notification",
+            "permission",
+            "skip",
+            "growth",
+            "photo",
+            "share",
+            "care-type",
+            "recommend",
+        )
     )
 
 
