@@ -155,6 +155,31 @@ def test_raw_body_and_svix_headers_are_passed_to_svix_verifier(monkeypatch):
     assert event.avatar_url == "https://example.com/avatar.jpg"
 
 
+def test_clerk_payload_without_top_level_event_id_uses_svix_id_as_event_id():
+    payload = json.dumps(
+        {
+            "type": "user.updated",
+            "object": "event",
+            "data": {
+                "id": "user_123",
+                "email_addresses": [{"email_address": "midoriko@example.com"}],
+                "username": "midoriko",
+                "image_url": "https://example.com/avatar.jpg",
+            },
+        },
+        separators=(",", ":"),
+    ).encode()
+
+    event = verify(
+        ClerkWebhookVerifier(make_settings()),
+        make_request(body=payload, headers=signed_headers(payload)),
+    )
+
+    assert event.event_id == "msg_123"
+    assert event.event_type == "user.updated"
+    assert event.clerk_user_id == "user_123"
+
+
 def test_unsupported_event_type_is_rejected_after_verification(monkeypatch):
     class FakeWebhook:
         def __init__(self, _secret: str) -> None:
