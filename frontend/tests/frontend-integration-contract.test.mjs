@@ -14,11 +14,13 @@ test('frontend auth and api source do not introduce explicit any', async () => {
   const sourcePaths = [
     'src/api/client.ts',
     'src/api/plants.ts',
+    'src/api/watering.ts',
     'src/composables/useAuthenticatedApi.ts',
     'src/composables/usePlants.ts',
     'src/composables/usePlantDetail.ts',
     'src/types/api.ts',
     'src/types/plant.ts',
+    'src/types/watering.ts',
   ]
 
   const explicitAnyPattern = /(?<![A-Za-z0-9_$])any(?![A-Za-z0-9_$])/
