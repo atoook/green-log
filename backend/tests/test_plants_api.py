@@ -4,13 +4,16 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
+from app.auth.dependencies import get_current_user
+from app.auth.types import CurrentUser
 from app.core.config import Settings
 from app.db.session import get_session
 from app.main import app
 from app.models.plant import Plant
+from app.models.user import User
 
 
-def make_client() -> TestClient:
+def make_client(current_user: CurrentUser | None = None) -> TestClient:
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -23,7 +26,23 @@ def make_client() -> TestClient:
             yield session
 
     app.dependency_overrides[get_session] = override_session
+    if current_user is not None:
+        with Session(engine) as session:
+            session.add(
+                User(
+                    id=current_user.id,
+                    clerk_user_id=current_user.clerk_user_id,
+                    status=current_user.status,
+                )
+            )
+            session.commit()
+
+        app.dependency_overrides[get_current_user] = lambda: current_user
     return TestClient(app)
+
+
+def make_current_user(user_id: str = "test-user") -> CurrentUser:
+    return CurrentUser(id=user_id, clerk_user_id=f"clerk-{user_id}", status="active")
 
 
 def teardown_function():
@@ -31,7 +50,7 @@ def teardown_function():
 
 
 def test_create_and_read_plant():
-    client = make_client()
+    client = make_client(make_current_user())
 
     response = client.post(
         "/plants",
@@ -52,6 +71,8 @@ def test_create_and_read_plant():
     assert created["memo"] == "窓際に置いている"
     assert created["imageUrl"] == "https://example.com/monstera.jpg"
     assert created["wateringCycleDays"] == 7
+    assert "ownerUserId" not in created
+    assert "owner_user_id" not in created
     assert "nextWateringDate" not in created
 
     list_response = client.get("/plants")
@@ -64,7 +85,7 @@ def test_create_and_read_plant():
 
 
 def test_create_plant_rejects_blank_name():
-    client = make_client()
+    client = make_client(make_current_user())
 
     response = client.post(
         "/plants",
@@ -82,7 +103,7 @@ def test_create_plant_rejects_blank_name():
 
 
 def test_create_plant_rejects_invalid_watering_cycle():
-    client = make_client()
+    client = make_client(make_current_user())
 
     response = client.post(
         "/plants",
@@ -100,7 +121,7 @@ def test_create_plant_rejects_invalid_watering_cycle():
 
 
 def test_get_missing_plant_returns_404():
-    client = make_client()
+    client = make_client(make_current_user())
 
     response = client.get("/plants/999")
 
@@ -109,7 +130,7 @@ def test_get_missing_plant_returns_404():
 
 
 def test_repository_timestamp_and_optional_fields_round_trip():
-    client = make_client()
+    client = make_client(make_current_user())
 
     response = client.post(
         "/plants",
@@ -126,6 +147,36 @@ def test_repository_timestamp_and_optional_fields_round_trip():
     assert payload["imageUrl"] is None
     assert payload["createdAt"].endswith("Z")
     assert payload["updatedAt"].endswith("Z")
+
+
+def test_plant_routes_require_authentication():
+    client = make_client()
+
+    assert client.get("/plants").status_code == 401
+    assert client.post(
+        "/plants",
+        json={"name": "ポトス", "wateringCycleDays": 7},
+    ).status_code == 401
+    assert client.get("/plants/1").status_code == 401
+
+
+def test_plant_list_and_detail_are_scoped_to_current_user():
+    current_user = make_current_user("user-a")
+    client = make_client(current_user)
+
+    create_response = client.post(
+        "/plants",
+        json={"name": "ユーザーAの植物", "wateringCycleDays": 7},
+    )
+    assert create_response.status_code == 201
+
+    app.dependency_overrides[get_current_user] = lambda: make_current_user("user-b")
+    list_response = client.get("/plants")
+    detail_response = client.get(f"/plants/{create_response.json()['id']}")
+
+    assert list_response.status_code == 200
+    assert list_response.json() == []
+    assert detail_response.status_code == 404
 
 
 def test_cors_allows_configured_frontend_origin():

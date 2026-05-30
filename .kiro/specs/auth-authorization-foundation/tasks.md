@@ -17,15 +17,17 @@
   - _Requirements: 1.1, 1.2, 1.5, 8.5_
   - _Boundary: ClerkAppProvider_
 
-- [ ] 1.3 User table と Plant owner column の migration を作成する
+- [x] 1.3 User table と Plant owner column の migration / owner scope 縦スライスを作成する
   - `users` table を UUID text primary key、unique `clerk_user_id`、status、profile fields、UTC timestamps で作成する。
   - `plants` に not null owner reference と owner lookup 用 index を追加する。
   - 既存 Plant row がある場合は明示 backfill 設定なしで ownerless migration が進まないようにする。
   - Alembic metadata が User model と Plant owner schema を検出できる状態になる。
-  - _Requirements: 3.3, 3.4, 3.5, 4.3, 6.1_
-  - _Boundary: AuthMigration_
+  - Plant repository / service を owner id 必須の create/list/detail contract に変更し、NOT NULL owner migration と同じ縦スライスで full tests を保つ。
+  - Local smoke が smoke application user を作成して owner-scoped Plant CRUD を通せる状態になる。
+  - _Requirements: 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 5.6, 6.1, 6.2, 6.3, 6.4, 6.6_
+  - _Boundary: AuthMigration, PlantOwnerScope, Smoke Verification_
 
-- [ ] 1.4 Backend test data factory を所有者モデル前提へ拡張する
+- [x] 1.4 Backend test data factory を所有者モデル前提へ拡張する
   - application user と owner-scoped Plant を作成できる test helper を用意する。
   - user A / user B の分離を test data factory だけで再現できる状態にする。
   - Plant API test が owner_user_id を持つ row を準備できる状態になる。
@@ -146,7 +148,7 @@
   - _Depends: 4.2_
 
 - [ ] 5. Plant API を owner scope に統合する
-- [ ] 5.1 Plant repository / service を owner-scoped contract へ変更する
+- [x] 5.1 Plant repository / service を owner-scoped contract へ変更する
   - Plant create は `CurrentUser.id` 由来の owner id を必須入力として保存する。
   - list は owner id で絞り込み、detail は plant id と owner id の組み合わせで取得する。
   - `PlantCreate` と `PlantRead` に owner field を露出せず、client 指定 user id を所有者判定に使わない。
@@ -182,6 +184,10 @@
   - _Requirements: 3.3, 4.1, 4.3, 5.1, 5.6, 6.1, 6.2, 8.4_
   - _Boundary: AuthMigration, Smoke Verification_
   - _Depends: 5.2_
+
+## Implementation Notes
+
+- 1.3: `plants.owner_user_id` の NOT NULL migration は Plant owner-scoped repository/service と local smoke owner 作成を同じ縦スライスで実装しないと既存 Plant CRUD が壊れるため、5.1 の実装と 5.4 の local smoke 更新を前倒しした。5.2 は real `CurrentUserDependency` の完成、5.4 は Turso/libSQL smoke 実行を引き続き所有する。
 
 - [ ] 6. Cross-boundary integration と最終検証を完了する
 - [ ] 6.1 Backend router composition と error contract を全体で検証する

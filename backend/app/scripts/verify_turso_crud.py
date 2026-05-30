@@ -12,6 +12,7 @@ from sqlmodel import Session
 
 from app.core.config import Settings
 from app.db.engine import create_database_engine
+from app.models.user import User
 from app.repositories.plant_repository import PlantRepository
 from app.schemas.plant import PlantCreate
 from app.services.plant_service import PlantService
@@ -43,10 +44,20 @@ def build_settings(mode: str) -> Settings:
 def verify_plant_crud(settings: Settings) -> int:
     engine = create_database_engine(settings)
     smoke_name = f"__green_log_smoke_{uuid.uuid4()}"
+    smoke_user_id = f"smoke-user-{uuid.uuid4()}"
+    smoke_clerk_user_id = f"smoke-clerk-{uuid.uuid4()}"
 
     with Session(engine) as session:
+        session.add(
+            User(
+                id=smoke_user_id,
+                clerk_user_id=smoke_clerk_user_id,
+            )
+        )
+        session.commit()
         service = PlantService(PlantRepository(session))
         created = service.create_plant(
+            smoke_user_id,
             PlantCreate(
                 name=smoke_name,
                 acquired_date=None,
@@ -55,8 +66,8 @@ def verify_plant_crud(settings: Settings) -> int:
                 watering_cycle_days=7,
             )
         )
-        plants = service.list_plants()
-        detail = service.get_plant(created.id)
+        plants = service.list_plants(smoke_user_id)
+        detail = service.get_plant(smoke_user_id, created.id)
 
     if created.id < 1:
         raise RuntimeError("Plant create did not return a generated id")
