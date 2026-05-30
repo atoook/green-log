@@ -54,7 +54,7 @@
   - _Boundary: ClerkSessionVerifier_
   - _Depends: 1.1_
 
-- [ ] 2.3 CurrentUserDependency を protected API の共通入口にする
+- [x] 2.3 CurrentUserDependency を protected API の共通入口にする
   - Clerk claims を application user の get-or-create に接続する。
   - active user の internal user id だけを `CurrentUser` として domain service に渡す。
   - 認証失敗は 401、disabled / deleted user は 403 に変換し、Service / Repository に HTTP 例外を漏らさない。
