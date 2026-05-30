@@ -19,6 +19,7 @@ test('frontend auth and api source do not introduce explicit any', async () => {
     'src/composables/usePlants.ts',
     'src/composables/usePlantDetail.ts',
     'src/composables/useTodayCare.ts',
+    'src/composables/usePlantWatering.ts',
     'src/types/api.ts',
     'src/types/plant.ts',
     'src/types/watering.ts',
