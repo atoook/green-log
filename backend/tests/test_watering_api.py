@@ -137,6 +137,84 @@ def test_record_watering_route_creates_record_and_retrieved_state_matches(
     assert _as_api_datetime(plant.last_watered_at) == record["wateredAt"]
 
 
+def test_app_watering_flow_keeps_today_detail_record_and_storage_consistent(
+    api_client,
+    override_current_user,
+    test_engine,
+):
+    override_current_user("owner-a")
+
+    create_plant_response = api_client.post(
+        "/plants",
+        json={
+            "name": "今日お世話するポトス",
+            "wateringCycleDays": 10,
+        },
+    )
+    assert create_plant_response.status_code == 201
+    plant_id = create_plant_response.json()["id"]
+
+    today_before_response = api_client.get("/care/today")
+    detail_before_response = api_client.get(f"/plants/{plant_id}/watering")
+
+    assert today_before_response.status_code == 200
+    assert detail_before_response.status_code == 200
+    today_before = today_before_response.json()
+    detail_before = detail_before_response.json()
+    assert [item["plantId"] for item in today_before["items"]] == [plant_id]
+    assert today_before["items"][0]["dueStatus"] == "unrecorded"
+    assert today_before["items"][0]["lastWateredAt"] is None
+    assert today_before["items"][0]["nextWateringDate"] is None
+    assert detail_before == {
+        "plantId": plant_id,
+        "lastWateredAt": None,
+        "nextWateringDate": None,
+        "isDueToday": True,
+        "dueStatus": "unrecorded",
+        "history": [],
+    }
+
+    create_record_response = api_client.post(
+        f"/plants/{plant_id}/watering-records",
+        json={},
+    )
+
+    assert create_record_response.status_code == 201
+    created = create_record_response.json()
+    record = created["record"]
+    state = created["state"]
+    expected_next_date = (
+        _parse_api_datetime(record["wateredAt"]).date() + timedelta(days=10)
+    ).isoformat()
+    assert state["plantId"] == plant_id
+    assert state["lastWateredAt"] == record["wateredAt"]
+    assert state["nextWateringDate"] == expected_next_date
+    assert state["isDueToday"] is False
+    assert state["dueStatus"] is None
+    assert state["history"] == [record]
+    assert_no_owner_fields(created)
+
+    detail_after_response = api_client.get(f"/plants/{plant_id}/watering")
+    today_after_response = api_client.get("/care/today")
+
+    assert detail_after_response.status_code == 200
+    assert today_after_response.status_code == 200
+    detail_after = detail_after_response.json()
+    today_after = today_after_response.json()
+    assert detail_after == state
+    assert plant_id not in [item["plantId"] for item in today_after["items"]]
+
+    with Session(test_engine) as session:
+        plant = session.get(Plant, plant_id)
+        records = session.exec(select(WateringRecord)).all()
+
+    assert plant is not None
+    assert _as_api_datetime(plant.last_watered_at) == record["wateredAt"]
+    assert [(item.plant_id, _as_api_datetime(item.watered_at)) for item in records] == [
+        (plant_id, record["wateredAt"])
+    ]
+
+
 def test_watering_routes_hide_missing_and_other_owner_plants_with_404(
     test_engine,
 ):
