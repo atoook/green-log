@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤設定とデータ所有モデルを準備する
+- [x] 1. 基盤設定とデータ所有モデルを準備する
 - [x] 1.1 Backend の認証関連 runtime 設定を追加する
   - Clerk session 検証と webhook 署名検証に必要な backend dependency を追加する。
   - Clerk secret、authorized parties、webhook secret、legacy owner backfill 設定を runtime settings と env example に追加する。
@@ -35,7 +35,7 @@
   - _Boundary: Backend Test Infrastructure_
   - _Depends: 1.3_
 
-- [ ] 2. Backend の application user と current user を実装する
+- [x] 2. Backend の application user と current user を実装する
 - [x] 2.1 UserRepository と UserService で application user lifecycle を扱う
   - `clerk_user_id` unique key による idempotent upsert を実装する。
   - 同じ Clerk user の初回アクセスと再アクセスで同一 application user を返す。
@@ -80,7 +80,7 @@
   - _Boundary: Backend Auth Tests_
   - _Depends: 2.1, 2.2, 2.3_
 
-- [ ] 3. Frontend の認証 shell と typed API client を実装する
+- [x] 3. Frontend の認証 shell と typed API client を実装する
 - [x] 3.1 (P) ClerkAppProvider、FrontendRouter、AuthGate、AuthHeaderControls を組み込む
   - app bootstrap に Clerk provider を追加し、route content を認証状態 gate の内側に配置する。
   - router に protected route metadata を付け、保護画面の表示判定が AuthGate に集約される状態にする。
@@ -119,7 +119,7 @@
   - _Boundary: AuthGate, Plant UI State_
   - _Depends: 3.1, 3.3_
 
-- [ ] 4. Clerk webhook 同期を実装する
+- [x] 4. Clerk webhook 同期を実装する
 - [x] 4.1 (P) WebhookVerifier で Clerk event を署名検証する
   - raw body と Svix headers を使って webhook signature を検証する。
   - `user.created`、`user.updated`、`user.deleted` だけを typed event として受け付ける。
@@ -147,7 +147,7 @@
   - _Boundary: Webhook Tests_
   - _Depends: 4.2_
 
-- [ ] 5. Plant API を owner scope に統合する
+- [x] 5. Plant API を owner scope に統合する
 - [x] 5.1 Plant repository / service を owner-scoped contract へ変更する
   - Plant create は `CurrentUser.id` 由来の owner id を必須入力として保存する。
   - list は owner id で絞り込み、detail は plant id と owner id の組み合わせで取得する。
@@ -189,7 +189,7 @@
 
 - 1.3: `plants.owner_user_id` の NOT NULL migration は Plant owner-scoped repository/service と local smoke owner 作成を同じ縦スライスで実装しないと既存 Plant CRUD が壊れるため、5.1 の実装と 5.4 の local smoke 更新を前倒しした。5.2 は real `CurrentUserDependency` の完成、5.4 は Turso/libSQL smoke 実行を引き続き所有する。
 
-- [ ] 6. Cross-boundary integration と最終検証を完了する
+- [x] 6. Cross-boundary integration と最終検証を完了する
 - [x] 6.1 Backend router composition と error contract を全体で検証する
   - webhook router と protected Plant router が main application に登録される。
   - auth/user/webhook/plant の error response が 401、403、404、422、400 の設計 contract に沿うことを確認する。
@@ -208,7 +208,7 @@
   - _Boundary: Frontend Integration Validation_
   - _Depends: 3.4, 5.2_
 
-- [ ] 6.3 実装完了前の end-to-end owner model regression を固定する
+- [x] 6.3 実装完了前の end-to-end owner model regression を固定する
   - backend と frontend の typed API contract が owner field 非公開のまま一致することを確認する。
   - 初回ログイン相当の request で application user が作成され、2 回目以降は再利用されることを API flow として検証する。
   - user A が user B の Plant を list/detail/update/delete pattern で扱えない owner-only model が将来 domain に再利用できることを確認する。

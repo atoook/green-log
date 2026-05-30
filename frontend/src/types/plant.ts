@@ -11,9 +11,9 @@ export interface Plant {
 
 export interface PlantCreateInput {
   name: string
-  acquiredDate: string | null
-  memo: string | null
-  imageUrl: string | null
+  acquiredDate?: string | null
+  memo?: string | null
+  imageUrl?: string | null
   wateringCycleDays: number
 }
 
