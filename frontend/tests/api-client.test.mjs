@@ -90,6 +90,29 @@ test('missing token fails as auth without calling fetch', async () => {
   assert.match(error.message, /ログイン|認証|セッション/)
 })
 
+test('token provider failures fail closed as sanitized auth errors without calling fetch', async () => {
+  const { createAuthenticatedApiClient } = await loadApiClientModule()
+  let fetchCalled = false
+  const client = createAuthenticatedApiClient({
+    baseUrl: 'https://api.example.test',
+    getToken: async () => {
+      throw new Error('Clerk getToken failed with Bearer stale-token and sk_test_secret')
+    },
+    fetch: async () => {
+      fetchCalled = true
+      return jsonResponse(200, {})
+    },
+  })
+
+  const error = await captureApiError(() => client.request('/plants'))
+
+  assert.equal(fetchCalled, false)
+  assert.equal(error.type, 'auth')
+  assert.doesNotMatch(error.message, /stale-token/)
+  assert.doesNotMatch(error.message, /sk_test_secret/)
+  assert.doesNotMatch(error.message, /Clerk getToken/)
+})
+
 test('classifies protected API and validation responses as typed errors without leaking details', async () => {
   const { createAuthenticatedApiClient } = await loadApiClientModule()
   const statuses = [

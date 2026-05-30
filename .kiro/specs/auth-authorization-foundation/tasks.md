@@ -199,7 +199,7 @@
   - _Boundary: Backend Integration Validation_
   - _Depends: 4.3, 5.3_
 
-- [ ] 6.2 Frontend build と保護 UI flow を検証する
+- [x] 6.2 Frontend build と保護 UI flow を検証する
   - signed-out では Plant list/detail が描画されず、登録・ログイン導線だけが表示されることを検証する。
   - signed-in 相当の状態では own empty state、Plant create、Plant detail navigation が既存 UI contract のまま動くことを検証する。
   - session expired / auth error が成功状態や stale data として残らないことを検証する。

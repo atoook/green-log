@@ -50,7 +50,13 @@ export function createAuthenticatedApiClient(
 
   return {
     async request<TResponse>(path: string, init?: RequestInit): Promise<TResponse> {
-      const token = await options.getToken()
+      let token: string | null
+
+      try {
+        token = await options.getToken()
+      } catch {
+        throw createApiError('auth')
+      }
 
       if (!token) {
         throw createApiError('auth')
