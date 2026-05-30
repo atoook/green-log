@@ -81,7 +81,7 @@
   - _Depends: 2.1, 2.2, 2.3_
 
 - [ ] 3. Frontend の認証 shell と typed API client を実装する
-- [ ] 3.1 (P) ClerkAppProvider、FrontendRouter、AuthGate、AuthHeaderControls を組み込む
+- [x] 3.1 (P) ClerkAppProvider、FrontendRouter、AuthGate、AuthHeaderControls を組み込む
   - app bootstrap に Clerk provider を追加し、route content を認証状態 gate の内側に配置する。
   - router に protected route metadata を付け、保護画面の表示判定が AuthGate に集約される状態にする。
   - signed-out 状態で登録・ログイン導線を表示し、signed-in 状態で保護画面を表示する。
