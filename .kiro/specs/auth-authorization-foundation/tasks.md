@@ -91,7 +91,7 @@
   - _Boundary: ClerkAppProvider, FrontendRouter, AuthGate, AuthHeaderControls_
   - _Depends: 1.2_
 
-- [ ] 3.2 (P) AuthenticatedApiClient と auth error 型を実装する
+- [x] 3.2 (P) AuthenticatedApiClient と auth error 型を実装する
   - request ごとに Clerk session token を取得し、Bearer token として送信する。
   - token がない状態では保護操作を成功扱いせず、auth error として扱う。
   - 401、403、404、422、network/server error を typed error に分類する。
