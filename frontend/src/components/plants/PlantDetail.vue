@@ -10,6 +10,23 @@ defineProps<{
 const emit = defineEmits<{
   back: []
 }>()
+
+function detailErrorMessage(error: ApiError): string {
+  switch (error.type) {
+    case 'auth':
+      return 'ログインの有効期限が切れました。もう一度ログインしてください。'
+    case 'forbidden':
+      return 'この植物の記録を表示できません。ログイン中のアカウントを確認してください。'
+    case 'not_found':
+      return '植物が見つかりません。'
+    case 'validation':
+      return '植物の指定を確認してください。'
+    case 'network':
+      return '接続できませんでした。通信環境を確認してからもう一度お試しください。'
+    case 'server':
+      return '植物の記録を読み込めませんでした。時間をおいてもう一度お試しください。'
+  }
+}
 </script>
 
 <template>
@@ -21,7 +38,7 @@ const emit = defineEmits<{
     <p v-if="isLoading" class="text-sm text-stone-600">読み込んでいます</p>
 
     <div v-else-if="error" class="rounded-md bg-red-50 p-4 text-sm text-red-800">
-      {{ error.message }}
+      {{ detailErrorMessage(error) }}
     </div>
 
     <article v-else-if="plant" class="grid gap-4">

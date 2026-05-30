@@ -109,7 +109,7 @@
   - _Boundary: PlantsApiClient, Plant Composables_
   - _Depends: 3.2_
 
-- [ ] 3.4 Frontend の保護画面エラー状態を認証失敗に対応させる
+- [x] 3.4 Frontend の保護画面エラー状態を認証失敗に対応させる
   - signed-out、auth loading、session expired、forbidden、not found、validation の表示状態を整理する。
   - auth error 発生時に新しい Plant data の取得・作成が成功した表示にならないようにする。
   - logout 後に直前ユーザーの Plant list / detail が画面に残らない状態になる。
