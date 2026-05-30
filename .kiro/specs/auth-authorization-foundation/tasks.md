@@ -190,7 +190,7 @@
 - 1.3: `plants.owner_user_id` の NOT NULL migration は Plant owner-scoped repository/service と local smoke owner 作成を同じ縦スライスで実装しないと既存 Plant CRUD が壊れるため、5.1 の実装と 5.4 の local smoke 更新を前倒しした。5.2 は real `CurrentUserDependency` の完成、5.4 は Turso/libSQL smoke 実行を引き続き所有する。
 
 - [ ] 6. Cross-boundary integration と最終検証を完了する
-- [ ] 6.1 Backend router composition と error contract を全体で検証する
+- [x] 6.1 Backend router composition と error contract を全体で検証する
   - webhook router と protected Plant router が main application に登録される。
   - auth/user/webhook/plant の error response が 401、403、404、422、400 の設計 contract に沿うことを確認する。
   - backend tests が auth、webhook、owner separation、disabled user、secret-safe error の回帰を含む状態になる。
