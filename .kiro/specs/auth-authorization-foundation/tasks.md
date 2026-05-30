@@ -36,7 +36,7 @@
   - _Depends: 1.3_
 
 - [ ] 2. Backend の application user と current user を実装する
-- [ ] 2.1 UserRepository と UserService で application user lifecycle を扱う
+- [x] 2.1 UserRepository と UserService で application user lifecycle を扱う
   - `clerk_user_id` unique key による idempotent upsert を実装する。
   - 同じ Clerk user の初回アクセスと再アクセスで同一 application user を返す。
   - disabled / deleted status を保存し、active 以外を protected operation に使えない状態として表現する。
