@@ -124,7 +124,7 @@ def test_current_user_dependency_rejects_inactive_users_with_403(
     session: Session,
     status: UserStatus,
 ):
-    existing_user(session, status=status, clerk_user_id="clerk-inactive")
+    user = existing_user(session, status=status, clerk_user_id="clerk-inactive")
     verifier = StubVerifier(ClerkSessionClaims(clerk_user_id="clerk-inactive"))
 
     with pytest.raises(HTTPException) as exc_info:
@@ -133,6 +133,7 @@ def test_current_user_dependency_rejects_inactive_users_with_403(
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "Forbidden"
     assert "clerk-inactive" not in exc_info.value.detail
+    assert user.id not in exc_info.value.detail
 
 
 def test_current_user_dependency_maps_invalid_auth_to_401_without_user_operation(

@@ -46,6 +46,30 @@ def test_missing_bearer_token_fails_closed_without_calling_clerk_sdk(monkeypatch
     assert_sanitized(exc_info.value)
 
 
+@pytest.mark.parametrize(
+    "authorization",
+    [
+        "Basic session-token",
+        "Bearer",
+        "Bearer ",
+        "session-token",
+    ],
+)
+def test_malformed_authorization_header_fails_closed_without_calling_clerk_sdk(
+    authorization: str,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    def fail_if_called(*_args: object, **_kwargs: object) -> RequestState:
+        raise AssertionError("Clerk SDK should not be called without a bearer token")
+
+    monkeypatch.setattr("app.auth.clerk.authenticate_request", fail_if_called)
+
+    with pytest.raises(ClerkSessionVerificationError) as exc_info:
+        make_verifier().verify_request(make_request(authorization))
+
+    assert_sanitized(exc_info.value)
+
+
 def test_missing_secret_key_fails_closed_without_exposing_configuration(monkeypatch):
     def fail_if_called(*_args: object, **_kwargs: object) -> RequestState:
         raise AssertionError("Clerk SDK should not be called without a secret key")

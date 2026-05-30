@@ -71,7 +71,7 @@
   - _Boundary: Backend Test Infrastructure, CurrentUserDependency_
   - _Depends: 2.3_
 
-- [ ] 2.5 Auth / user の unit test を追加する
+- [x] 2.5 Auth / user の unit test を追加する
   - first access、再アクセス、並行相当の重複 upsert で user が重複しないことを検証する。
   - invalid token と missing token が 401 相当、disabled / deleted user が 403 相当になることを検証する。
   - current user の `id` が internal user id であり Clerk User ID を owner として返さないことを検証する。

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import ast
+from pathlib import Path
+
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -50,6 +53,33 @@ def profile(
 
 def count_users(session: Session) -> int:
     return len(session.exec(select(User)).all())
+
+
+@pytest.mark.parametrize(
+    "module_path",
+    [
+        Path("app/services/user_service.py"),
+        Path("app/repositories/user_repository.py"),
+    ],
+)
+def test_user_service_and_repository_do_not_import_http_boundary_types(
+    module_path: Path,
+):
+    tree = ast.parse(module_path.read_text())
+
+    imported_modules: set[str] = set()
+    imported_names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported_modules.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module is not None:
+                imported_modules.add(node.module)
+            imported_names.update(alias.name for alias in node.names)
+
+    assert "fastapi" not in imported_modules
+    assert "fastapi.exceptions" not in imported_modules
+    assert "HTTPException" not in imported_names
 
 
 def test_get_or_create_from_clerk_creates_application_user_once(session: Session):
