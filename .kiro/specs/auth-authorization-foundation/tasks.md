@@ -167,7 +167,7 @@
   - _Boundary: PlantRouter, CurrentUserDependency Integration_
   - _Depends: 2.3, 5.1_
 
-- [ ] 5.3 Plant API の owner separation integration test を追加する
+- [x] 5.3 Plant API の owner separation integration test を追加する
   - auth なしの Plant list/create/detail が 401 になり、Plant service を成功実行しないことを検証する。
   - user A と user B の create/list/detail が互いに分離されることを検証する。
   - 他ユーザー Plant detail は存在を返さず 404 になり、対象 row が変更されないことを検証する。
