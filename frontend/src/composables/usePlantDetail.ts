@@ -1,8 +1,11 @@
 import { onMounted, ref, watch, type Ref } from 'vue'
-import { createApiError, getPlant } from '../api/plants'
+import { createApiError } from '../api/client'
+import { createPlantsApiClient } from '../api/plants'
 import type { ApiError, Plant } from '../types/plant'
+import { useAuthenticatedApi } from './useAuthenticatedApi'
 
 export function usePlantDetail(plantIdParam: Ref<string | string[]>) {
+  const plantsApiClient = createPlantsApiClient(useAuthenticatedApi())
   const plant = ref<Plant | null>(null)
   const isLoading = ref(false)
   const error = ref<ApiError | null>(null)
@@ -24,7 +27,7 @@ export function usePlantDetail(plantIdParam: Ref<string | string[]>) {
     isLoading.value = true
     error.value = null
     try {
-      plant.value = await getPlant(plantId)
+      plant.value = await plantsApiClient.getPlant(plantId)
     } catch (caught) {
       plant.value = null
       error.value = caught as ApiError

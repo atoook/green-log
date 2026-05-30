@@ -1,17 +1,24 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     database_url: str = Field(default="sqlite:///./green_log.db", alias="DATABASE_URL")
     turso_database_url: str | None = Field(default=None, alias="TURSO_DATABASE_URL")
-    turso_auth_token: str | None = Field(default=None, alias="TURSO_AUTH_TOKEN")
+    turso_auth_token: SecretStr | None = Field(default=None, alias="TURSO_AUTH_TOKEN")
     cors_allow_origins: str = Field(
         default="http://localhost:5173,http://127.0.0.1:5173",
         alias="CORS_ALLOW_ORIGINS",
+    )
+    clerk_secret_key: SecretStr | None = Field(default=None, alias="CLERK_SECRET_KEY")
+    clerk_authorized_parties: str = Field(default="", alias="CLERK_AUTHORIZED_PARTIES")
+    clerk_webhook_secret: SecretStr | None = Field(default=None, alias="CLERK_WEBHOOK_SECRET")
+    legacy_owner_backfill_user_id: str | None = Field(
+        default=None,
+        alias="LEGACY_OWNER_BACKFILL_USER_ID",
     )
 
     model_config = SettingsConfigDict(
@@ -25,11 +32,23 @@ class Settings(BaseSettings):
         return self.turso_database_url or self.database_url
 
     @property
+    def turso_auth_token_value(self) -> str | None:
+        return self.turso_auth_token.get_secret_value() if self.turso_auth_token else None
+
+    @property
     def cors_origin_list(self) -> list[str]:
         return [
             origin.strip()
             for origin in self.cors_allow_origins.split(",")
             if origin.strip()
+        ]
+
+    @property
+    def clerk_authorized_party_list(self) -> list[str]:
+        return [
+            party.strip()
+            for party in self.clerk_authorized_parties.split(",")
+            if party.strip()
         ]
 
 

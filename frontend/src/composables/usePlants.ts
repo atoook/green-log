@@ -1,8 +1,14 @@
 import { onMounted, ref } from 'vue'
-import { createPlant, listPlants } from '../api/plants'
+import { createPlantsApiClient } from '../api/plants'
 import type { ApiError, Plant, PlantCreateInput } from '../types/plant'
+import { useAuthenticatedApi } from './useAuthenticatedApi'
+
+function shouldClearPlantsOnError(error: ApiError): boolean {
+  return error.type === 'auth' || error.type === 'forbidden'
+}
 
 export function usePlants() {
+  const plantsApiClient = createPlantsApiClient(useAuthenticatedApi())
   const plants = ref<Plant[]>([])
   const isLoadingList = ref(false)
   const isCreating = ref(false)
@@ -12,9 +18,13 @@ export function usePlants() {
     isLoadingList.value = true
     error.value = null
     try {
-      plants.value = await listPlants()
+      plants.value = await plantsApiClient.listPlants()
     } catch (caught) {
-      error.value = caught as ApiError
+      const apiError = caught as ApiError
+      if (shouldClearPlantsOnError(apiError)) {
+        plants.value = []
+      }
+      error.value = apiError
     } finally {
       isLoadingList.value = false
     }
@@ -24,11 +34,15 @@ export function usePlants() {
     isCreating.value = true
     error.value = null
     try {
-      const created = await createPlant(input)
+      const created = await plantsApiClient.createPlant(input)
       plants.value = [created, ...plants.value.filter((plant) => plant.id !== created.id)]
       return created
     } catch (caught) {
-      error.value = caught as ApiError
+      const apiError = caught as ApiError
+      if (shouldClearPlantsOnError(apiError)) {
+        plants.value = []
+      }
+      error.value = apiError
       return null
     } finally {
       isCreating.value = false

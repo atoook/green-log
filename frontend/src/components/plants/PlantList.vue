@@ -15,6 +15,25 @@ const emit = defineEmits<{
 
 const brokenImageIds = ref<Set<number>>(new Set())
 
+function listErrorMessage(error: ApiError): string {
+  switch (error.type) {
+    case 'auth':
+      return 'ログインの有効期限が切れました。もう一度ログインしてください。'
+    case 'forbidden':
+      return 'この植物一覧を表示できません。ログイン中のアカウントを確認してください。'
+    case 'network':
+      return '接続できませんでした。通信環境を確認してからもう一度お試しください。'
+    case 'server':
+      return '植物一覧を読み込めませんでした。時間をおいてもう一度お試しください。'
+    case 'not_found':
+      return '植物一覧が見つかりませんでした。'
+    case 'validation':
+      return '入力内容を確認してください。'
+    default:
+      return '植物一覧を表示できませんでした。時間をおいてもう一度お試しください。'
+  }
+}
+
 function markImageBroken(plantId: number): void {
   brokenImageIds.value = new Set([...brokenImageIds.value, plantId])
 }
@@ -33,12 +52,12 @@ function markImageBroken(plantId: number): void {
     <p v-if="isLoading" class="text-sm text-stone-600">読み込んでいます</p>
 
     <div v-else-if="error" class="rounded-md bg-red-50 p-3 text-sm text-red-800">
-      一覧を表示できませんでした。
+      {{ listErrorMessage(error) }}
       <button class="ml-2 font-semibold underline" type="button" @click="emit('retry')">もう一度</button>
     </div>
 
     <div v-else-if="plants.length === 0" class="rounded-md bg-leaf-50 p-5 text-sm text-stone-700">
-      まだ植物の記録がありません。最初の鉢を記録してみましょう。
+      あなたの植物はまだ登録されていません。最初の鉢を記録してみましょう。
     </div>
 
     <ul v-else class="grid gap-3">

@@ -13,9 +13,17 @@ class PlantRepository:
         self.session.refresh(plant)
         return plant
 
-    def list(self) -> list[Plant]:
-        statement = select(Plant).order_by(Plant.id)
+    def list(self, owner_user_id: str) -> list[Plant]:
+        statement = (
+            select(Plant)
+            .where(Plant.owner_user_id == owner_user_id)
+            .order_by(Plant.id)
+        )
         return list(self.session.exec(statement).all())
 
-    def get_by_id(self, plant_id: int) -> Plant | None:
-        return self.session.get(Plant, plant_id)
+    def get_by_id(self, owner_user_id: str, plant_id: int) -> Plant | None:
+        statement = select(Plant).where(
+            Plant.id == plant_id,
+            Plant.owner_user_id == owner_user_id,
+        )
+        return self.session.exec(statement).first()
