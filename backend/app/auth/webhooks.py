@@ -45,7 +45,7 @@ class ClerkWebhookVerifier:
 
         try:
             verified_payload = Webhook(secret).verify(raw_body, headers)
-            return self._to_event(verified_payload)
+            return self._to_event(verified_payload, headers)
         except ClerkWebhookVerificationError:
             raise
         except WebhookVerificationError as exc:
@@ -74,7 +74,7 @@ class ClerkWebhookVerifier:
         }
 
     @classmethod
-    def _to_event(cls, payload: Any) -> ClerkWebhookEvent:
+    def _to_event(cls, payload: Any, headers: Mapping[str, str]) -> ClerkWebhookEvent:
         if not isinstance(payload, Mapping):
             raise ClerkWebhookVerificationError(reason="payload_not_mapping")
 
@@ -86,10 +86,16 @@ class ClerkWebhookVerifier:
         if not isinstance(data, Mapping):
             raise ClerkWebhookVerificationError(reason="missing_event_data")
 
-        event_id = cls._non_blank_string(payload.get("id"))
         clerk_user_id = cls._non_blank_string(data.get("id"))
-        if event_id is None or clerk_user_id is None:
-            raise ClerkWebhookVerificationError(reason="missing_event_or_user_id")
+        if clerk_user_id is None:
+            raise ClerkWebhookVerificationError(reason="missing_user_id")
+
+        event_id = (
+            cls._non_blank_string(payload.get("id"))
+            or cls._non_blank_string(headers.get("svix-id"))
+        )
+        if event_id is None:
+            raise ClerkWebhookVerificationError(reason="missing_event_id")
 
         return ClerkWebhookEvent(
             event_id=event_id,
