@@ -4,11 +4,12 @@ import { test } from 'node:test'
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
-test('plant routes are marked as protected routes', async () => {
+test('plant and today care routes are marked as protected routes', async () => {
   const router = await readSource('src/router/index.ts')
 
   assert.match(router, /path:\s*['"]\/plants['"][\s\S]*meta:\s*\{[^}]*requiresAuth:\s*true/)
   assert.match(router, /path:\s*['"]\/plants\/:plantId['"][\s\S]*meta:\s*\{[^}]*requiresAuth:\s*true/)
+  assert.match(router, /path:\s*['"]\/care\/today['"][\s\S]*meta:\s*\{[^}]*requiresAuth:\s*true/)
 })
 
 test('app shell keeps routed content inside AuthGate and exposes auth header controls', async () => {
@@ -20,6 +21,8 @@ test('app shell keeps routed content inside AuthGate and exposes auth header con
     /import\s+AuthHeaderControls\s+from\s+['"]\.\/components\/auth\/AuthHeaderControls\.vue['"]/,
   )
   assert.match(app, /<AuthHeaderControls\s*\/>/)
+  assert.match(app, /<RouterLink[\s\S]*to=["']\/care\/today["'][\s\S]*今日のお世話/)
+  assert.match(app, /<RouterLink[\s\S]*to=["']\/plants["'][\s\S]*植物一覧/)
   assert.match(app, /<AuthGate[\s\S]*<RouterView\s*\/>[\s\S]*<\/AuthGate>/)
 })
 

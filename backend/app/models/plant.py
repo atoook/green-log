@@ -12,6 +12,11 @@ class Plant(SQLModel, table=True):
     __tablename__ = "plants"
     __table_args__ = (
         sa.Index("ix_plants_owner_user_id_id", "owner_user_id", "id"),
+        sa.Index(
+            "ix_plants_owner_user_id_last_watered_at",
+            "owner_user_id",
+            "last_watered_at",
+        ),
     )
 
     id: int | None = Field(default=None, primary_key=True)
@@ -27,5 +32,6 @@ class Plant(SQLModel, table=True):
     memo: str | None = Field(default=None)
     image_url: str | None = Field(default=None)
     watering_cycle_days: int = Field(nullable=False)
+    last_watered_at: datetime | None = Field(default=None, nullable=True)
     created_at: datetime = Field(default_factory=utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=utc_now, nullable=False)

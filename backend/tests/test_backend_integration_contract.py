@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import datetime, timezone
 
 from fastapi import Request
 from fastapi.routing import APIRoute
@@ -12,6 +13,7 @@ from app.auth.webhooks import ClerkWebhookVerificationError
 from app.main import app
 from app.models.plant import Plant
 from app.models.user import User
+from app.models.watering_record import WateringRecord
 from app.routers.webhooks import get_clerk_webhook_verifier
 
 
@@ -33,12 +35,23 @@ class RejectingWebhookVerifier:
         raise ClerkWebhookVerificationError()
 
 
-def test_main_app_registers_webhook_and_protected_plant_routers():
+def test_main_app_registers_webhook_and_protected_plant_care_routers():
     routes = {
         (method, route.path)
         for route in app.routes
         if isinstance(route, APIRoute)
         for method in route.methods
+    }
+    expected_watering_routes = {
+        ("GET", "/care/today"),
+        ("GET", "/plants/{plant_id}/watering"),
+        ("POST", "/plants/{plant_id}/watering-records"),
+    }
+    openapi_watering_routes = {
+        (method.upper(), path)
+        for path, operations in app.openapi()["paths"].items()
+        if path.startswith("/care") or "watering" in path
+        for method in operations
     }
 
     assert {
@@ -46,7 +59,8 @@ def test_main_app_registers_webhook_and_protected_plant_routers():
         ("POST", "/plants"),
         ("GET", "/plants/{plant_id}"),
         ("POST", "/webhooks/clerk"),
-    }.issubset(routes)
+    }.union(expected_watering_routes).issubset(routes)
+    assert openapi_watering_routes == expected_watering_routes
 
 
 def test_app_level_auth_error_contract_is_401_and_secret_safe(api_client):
@@ -59,6 +73,65 @@ def test_app_level_auth_error_contract_is_401_and_secret_safe(api_client):
     assert response.json() == {"detail": "Authentication required"}
     assert response.headers["www-authenticate"] == "Bearer"
     assert "leaked-session-token" not in response.text
+
+
+def test_app_level_watering_routes_require_auth_and_keep_data_private(
+    api_client,
+    test_engine,
+):
+    last_watered_at = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
+    with Session(test_engine) as session:
+        session.add(
+            User(
+                id="internal-secret-owner",
+                clerk_user_id="clerk-secret-owner",
+                status="active",
+            )
+        )
+        session.commit()
+        plant = Plant(
+            owner_user_id="internal-secret-owner",
+            name="秘密のパキラ",
+            watering_cycle_days=7,
+            last_watered_at=last_watered_at,
+        )
+        session.add(plant)
+        session.commit()
+        session.refresh(plant)
+        assert plant.id is not None
+        record = WateringRecord(
+            owner_user_id="internal-secret-owner",
+            plant_id=plant.id,
+            watered_at=last_watered_at,
+            created_at=last_watered_at,
+        )
+        session.add(record)
+        session.commit()
+        plant_id = plant.id
+
+    responses = [
+        api_client.get("/care/today"),
+        api_client.get(f"/plants/{plant_id}/watering"),
+        api_client.post(f"/plants/{plant_id}/watering-records", json={}),
+    ]
+
+    assert [response.status_code for response in responses] == [401, 401, 401]
+    for response in responses:
+        assert response.json() == {"detail": "Authentication required"}
+        assert response.headers["www-authenticate"] == "Bearer"
+        assert "秘密のパキラ" not in response.text
+        assert "internal-secret-owner" not in response.text
+        assert "clerk-secret-owner" not in response.text
+
+    with Session(test_engine) as session:
+        plant_after = session.get(Plant, plant_id)
+        records = session.exec(select(WateringRecord)).all()
+
+    assert plant_after is not None
+    assert _as_utc_datetime(plant_after.last_watered_at) == last_watered_at
+    assert [
+        (record.plant_id, _as_utc_datetime(record.watered_at)) for record in records
+    ] == [(plant_id, last_watered_at)]
 
 
 def test_app_level_disabled_user_contract_is_403_and_stops_data_access(
@@ -168,3 +241,11 @@ def test_app_level_webhook_error_contract_is_400_and_secret_safe(api_client):
     assert response.json() == {"detail": "Invalid webhook"}
     assert "secret-signature" not in response.text
     assert "user_secret" not in response.text
+
+
+def _as_utc_datetime(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)

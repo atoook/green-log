@@ -318,21 +318,43 @@ def test_plant_route_policy_only_exposes_owned_plant_endpoints():
         for route in app.routes
         if isinstance(route, APIRoute) and "plants" in route.tags
     }
-    app_paths = {
-        route.path
+    app_routes = {
+        (method, route.path)
         for route in app.routes
         if isinstance(route, APIRoute)
+        for method in route.methods
     }
+    watering_mvp_routes = {
+        ("GET", "/care/today"),
+        ("GET", "/plants/{plant_id}/watering"),
+        ("POST", "/plants/{plant_id}/watering-records"),
+    }
+    watering_route_surface = {
+        (method, path)
+        for method, path in app_routes
+        if path.startswith("/care") or "watering" in path
+    }
+    app_paths = {path for _, path in app_routes}
 
     assert plant_routes == {
         ("GET", "/plants"),
         ("POST", "/plants"),
         ("GET", "/plants/{plant_id}"),
     }
+    assert watering_route_surface == watering_mvp_routes
     assert not any(
         forbidden in path
         for path in app_paths
-        for forbidden in ("watering", "today", "care", "growth", "photo", "share")
+        for forbidden in (
+            "notification",
+            "permission",
+            "skip",
+            "growth",
+            "photo",
+            "share",
+            "care-type",
+            "recommend",
+        )
     )
 
 
