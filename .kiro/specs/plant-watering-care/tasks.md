@@ -1,9 +1,9 @@
 # 実装計画
 
 - [ ] 1. 水やり永続化の基盤を追加する
-  - [ ] 1.1 `plants.last_watered_at` と `watering_records` のマイグレーションを作成する
+  - [x] 1.1 `plants.last_watered_at` と `watering_records` のマイグレーションを作成する
     - `plants.last_watered_at` を nullable UTC datetime として追加する。
-    - `watering_records` に user/plant 紐付け、recorded_at、note、created_at を保持し、植物削除時に履歴も削除される外部キーを設定する。
+    - `watering_records` に user/plant 紐付け、watered_at、created_at を保持する外部キーを設定する。
     - owner/date 検索に必要なインデックスを追加し、upgrade/downgrade が通ることを確認する。
     - 完了条件: 空DBへ適用でき、追加の backfill なしで nullable summary と履歴テーブルを作成でき、ロールバックで追加列とテーブルが消える。
     _Depends: なし_
