@@ -6,6 +6,8 @@ Plant Watering Care は、登録済み植物の水やり記録、最新水やり
 
 既存の Plant Registration は植物個体と水やり周期の authoritative source として維持する。本設計は WateringRecord を履歴の source of truth とし、Plant に最新水やり日時の summary を追加する。次回水やり予定日は保存せず、最新水やり日時と水やり周期から read model として算出する。
 
+この機能は実運用前の pre-release 追加として扱う。公開済み API や本番DBとの後方互換維持は設計目標にしない。DB スキーマ変更は Alembic migration で扱うが、後方互換のためだけの backfill、dual-read、legacy response branch、古いクライアント向け分岐は追加しない。
+
 ### Goals
 
 - 今日水やりが必要な植物を、認証済みユーザーの所有範囲だけで表示する。
@@ -53,7 +55,7 @@ Plant Watering Care は、登録済み植物の水やり記録、最新水やり
 
 ### Revalidation Triggers
 
-- Plant API response shape が既存 client を壊す変更。
+- Plant API response shape を変更し、現在の frontend 実装と同時に整合させられない場合。
 - Plant owner model、CurrentUser、auth error contract の変更。
 - `next_watering_date` を保存する schedule state の追加。
 - user timezone profile、notification setting、notification delivery の追加。
@@ -97,7 +99,7 @@ graph TB
 
 - Selected pattern: 既存の layered architecture に Watering domain slice を追加する hybrid pattern。
 - Domain boundaries: Plant は植物基本情報と水やり周期、Watering は履歴・最新状態・今日のお世話 read model を担当する。
-- Existing patterns preserved: owner scoped lookup、router error mapping、typed API client、page/composable/component 分離。
+- Current patterns followed: owner scoped lookup、router error mapping、typed API client、page/composable/component 分離。
 - New components rationale: 水やり履歴と今日のお世話は Plant Registration から明示的に分離された責務であるため、専用 router/service/repository/schema/component を置く。
 - Steering compliance: owner id は request から採用しない。API response は owner field を返さない。Frontend presentation component は token を扱わない。
 
@@ -650,7 +652,7 @@ Python schema は snake_case field と camelCase serialization を既存 `alias_
 ### Migration Tests
 
 - `0003_create_watering_records.py` が `watering_records` table、foreign keys、indexes、`plants.last_watered_at` を作成することを検証する。
-- 既存 plants row がある database でも `last_watered_at` nullable で migration できることを検証する。
+- 開発DBや test fixture に plants row がある場合も、追加 backfill なしで `last_watered_at` nullable として migration できることを検証する。
 - downgrade が watering table と summary column を戻せることを検証する。
 
 ### E2E or UI Verification
@@ -692,10 +694,10 @@ flowchart TB
     PhaseFour --> PhaseFive[Run smoke]
 ```
 
-- Phase 1: `plants.last_watered_at` nullable column を追加する。既存 row は null のまま未記録として扱う。
+- Phase 1: `plants.last_watered_at` nullable column を追加する。既存 row は追加 backfill なしで null のまま未記録として扱う。
 - Phase 2: `watering_records` table を作成する。
 - Phase 3: owner scoped read 用 index を作成する。
 - Phase 4: migration tests と API integration tests を実行する。
 - Phase 5: local SQLite smoke と Turso smoke に watering CRUD を含める。
 
-Rollback は migration downgrade に従う。WateringRecord を作成した後の downgrade は履歴 data を失うため、production rollback では backup を前提にする。
+Rollback は migration downgrade に従う。実運用前のため production rollback path は設計しない。実データ投入後に downgrade する場合は、履歴 data が失われるため backup/restore 方針を別途確認する。

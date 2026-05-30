@@ -276,7 +276,7 @@
   - detail/history: latest record selection、empty history、owner separation、owner fields hidden。
 - Migration
   - watering records table/columns/indexes/foreign keys。
-  - plants latest summary column を採用する場合は nullable column と existing row compatibility。
+  - plants latest summary column を採用する場合も実運用前前提のため、legacy dual-read や backfill は不要。migration は nullable column 追加で扱う。
 - App-level contract
   - new protected route registration。
   - secret-safe error contract。
