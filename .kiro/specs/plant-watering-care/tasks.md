@@ -85,7 +85,7 @@
     _Requirements: 6.3, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
 - [ ] 4. バックエンドのテストを追加する
-  - [ ] 4.1 水やりマイグレーションテストを追加する
+  - [x] 4.1 水やりマイグレーションテストを追加する
     - `watering_records` の外部キー、インデックス、nullable/required 制約を検証する。
     - plants row がある状態でも、追加 backfill なしで nullable summary として migration が通ることを検証する。
     - downgrade 後に追加テーブルと列が残らないことを検証する。

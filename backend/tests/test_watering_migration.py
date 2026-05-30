@@ -9,6 +9,60 @@ from sqlalchemy import create_engine, inspect, text
 from app.core.config import Settings
 
 
+def type_family(column_type: object) -> str:
+    type_name = str(column_type).upper()
+    for family in ("DATETIME", "INTEGER", "TEXT"):
+        if family in type_name:
+            return family
+    return type_name
+
+
+def column_schema(inspector, table_name: str) -> dict[str, dict[str, object]]:
+    return {
+        column["name"]: {
+            "type": type_family(column["type"]),
+            "nullable": bool(column["nullable"]),
+            "primary_key": bool(column["primary_key"]),
+        }
+        for column in inspector.get_columns(table_name)
+    }
+
+
+def foreign_key_schema(
+    inspector,
+    table_name: str,
+) -> dict[tuple[str, ...], dict[str, object]]:
+    return {
+        tuple(foreign_key["constrained_columns"]): {
+            "referred_table": foreign_key["referred_table"],
+            "referred_columns": tuple(foreign_key["referred_columns"]),
+            "ondelete": foreign_key.get("options", {}).get("ondelete"),
+        }
+        for foreign_key in inspector.get_foreign_keys(table_name)
+    }
+
+
+def index_schema(inspector, table_name: str) -> dict[str, dict[str, object]]:
+    return {
+        index["name"]: {
+            "columns": tuple(index["column_names"]),
+            "unique": bool(index.get("unique")),
+        }
+        for index in inspector.get_indexes(table_name)
+    }
+
+
+def assert_named_schema(
+    actual_schema: dict[str, dict[str, object]],
+    expected_schema: dict[str, dict[str, object]],
+) -> None:
+    actual_subset = {name: actual_schema.get(name) for name in expected_schema}
+    assert actual_subset == expected_schema, {
+        "expected": expected_schema,
+        "actual": actual_schema,
+    }
+
+
 def make_alembic_config(database_url: str) -> Config:
     config = Config("alembic.ini")
     config.attributes["settings"] = Settings(
@@ -33,54 +87,80 @@ def test_watering_migration_creates_summary_history_foreign_keys_and_indexes(
 
     assert "watering_records" in inspector.get_table_names()
 
-    plant_columns = {column["name"]: column for column in inspector.get_columns("plants")}
-    assert "last_watered_at" in plant_columns
-    assert plant_columns["last_watered_at"]["nullable"] is True
+    assert_named_schema(
+        column_schema(inspector, "plants"),
+        {
+            "last_watered_at": {
+                "type": "DATETIME",
+                "nullable": True,
+                "primary_key": False,
+            },
+        },
+    )
 
-    watering_columns = {
-        column["name"]: column for column in inspector.get_columns("watering_records")
+    assert_named_schema(
+        column_schema(inspector, "watering_records"),
+        {
+            "id": {
+                "type": "INTEGER",
+                "nullable": False,
+                "primary_key": True,
+            },
+            "owner_user_id": {
+                "type": "TEXT",
+                "nullable": False,
+                "primary_key": False,
+            },
+            "plant_id": {
+                "type": "INTEGER",
+                "nullable": False,
+                "primary_key": False,
+            },
+            "watered_at": {
+                "type": "DATETIME",
+                "nullable": False,
+                "primary_key": False,
+            },
+            "created_at": {
+                "type": "DATETIME",
+                "nullable": False,
+                "primary_key": False,
+            },
+        },
+    )
+
+    assert foreign_key_schema(inspector, "watering_records") == {
+        ("owner_user_id",): {
+            "referred_table": "users",
+            "referred_columns": ("id",),
+            "ondelete": None,
+        },
+        ("plant_id",): {
+            "referred_table": "plants",
+            "referred_columns": ("id",),
+            "ondelete": None,
+        },
     }
-    assert watering_columns["id"]["primary_key"] == 1
-    assert "TEXT" in str(watering_columns["owner_user_id"]["type"]).upper()
-    assert "INTEGER" in str(watering_columns["plant_id"]["type"]).upper()
-    assert not watering_columns["owner_user_id"]["nullable"]
-    assert not watering_columns["plant_id"]["nullable"]
-    assert not watering_columns["watered_at"]["nullable"]
-    assert not watering_columns["created_at"]["nullable"]
 
-    foreign_keys = inspector.get_foreign_keys("watering_records")
-    assert any(
-        foreign_key["referred_table"] == "users"
-        and foreign_key["constrained_columns"] == ["owner_user_id"]
-        and foreign_key["referred_columns"] == ["id"]
-        and not foreign_key.get("options", {}).get("ondelete")
-        for foreign_key in foreign_keys
-    )
-    assert any(
-        foreign_key["referred_table"] == "plants"
-        and foreign_key["constrained_columns"] == ["plant_id"]
-        and foreign_key["referred_columns"] == ["id"]
-        and not foreign_key.get("options", {}).get("ondelete")
-        for foreign_key in foreign_keys
-    )
+    assert index_schema(inspector, "watering_records") == {
+        "ix_watering_records_owner_user_id_plant_id_watered_at": {
+            "columns": ("owner_user_id", "plant_id", "watered_at"),
+            "unique": False,
+        },
+        "ix_watering_records_owner_user_id_watered_at": {
+            "columns": ("owner_user_id", "watered_at"),
+            "unique": False,
+        },
+    }
 
-    watering_indexes = inspector.get_indexes("watering_records")
-    assert any(
-        index["name"] == "ix_watering_records_owner_user_id_plant_id_watered_at"
-        and index["column_names"] == ["owner_user_id", "plant_id", "watered_at"]
-        for index in watering_indexes
-    )
-    assert any(
-        index["name"] == "ix_watering_records_owner_user_id_watered_at"
-        and index["column_names"] == ["owner_user_id", "watered_at"]
-        for index in watering_indexes
-    )
-
-    plant_indexes = inspector.get_indexes("plants")
-    assert any(
-        index["name"] == "ix_plants_owner_user_id_last_watered_at"
-        and index["column_names"] == ["owner_user_id", "last_watered_at"]
-        for index in plant_indexes
+    assert_named_schema(
+        index_schema(inspector, "plants"),
+        {
+            "ix_plants_owner_user_id_last_watered_at": {
+                "columns": ("owner_user_id", "last_watered_at"),
+                "unique": False,
+            },
+        },
     )
 
 
@@ -146,11 +226,25 @@ def test_watering_migration_downgrade_removes_summary_history_and_indexes(
     engine = create_engine(database_url)
     inspector = inspect(engine)
 
-    assert "watering_records" not in inspector.get_table_names()
-    assert "last_watered_at" not in {
-        column["name"] for column in inspector.get_columns("plants")
+    watering_leftovers = {
+        "tables": [
+            table_name
+            for table_name in inspector.get_table_names()
+            if table_name == "watering_records"
+        ],
+        "plant_columns": {
+            column_name: schema
+            for column_name, schema in column_schema(inspector, "plants").items()
+            if column_name == "last_watered_at"
+        },
+        "plant_indexes": {
+            index_name: schema
+            for index_name, schema in index_schema(inspector, "plants").items()
+            if index_name == "ix_plants_owner_user_id_last_watered_at"
+        },
     }
-    assert not any(
-        index["name"] == "ix_plants_owner_user_id_last_watered_at"
-        for index in inspector.get_indexes("plants")
-    )
+    assert watering_leftovers == {
+        "tables": [],
+        "plant_columns": {},
+        "plant_indexes": {},
+    }
