@@ -138,7 +138,7 @@
   - _Boundary: WebhookRouter, ClerkWebhookService_
   - _Depends: 2.1, 4.1_
 
-- [ ] 4.3 Webhook の integration test を追加する
+- [x] 4.3 Webhook の integration test を追加する
   - invalid signature が user state を変更しないことを検証する。
   - duplicate create/update event が application user を重複作成しないことを検証する。
   - deleted event 後の user が protected data operation に使えないことを検証する。
