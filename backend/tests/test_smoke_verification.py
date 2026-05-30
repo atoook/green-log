@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine, select
 from sqlmodel.pool import StaticPool
@@ -125,6 +127,49 @@ def test_assert_no_ownerless_watering_records_raises_when_rows_are_ownerless():
         assert "ownerless watering records" in str(error)
     else:
         raise AssertionError("ownerless watering records must fail smoke verification")
+
+
+def test_main_prints_created_watering_record_id(monkeypatch, capsys):
+    settings = Settings(database_url="sqlite://")
+    observed_modes: list[str] = []
+    migrated_settings: list[Settings] = []
+    crud_settings: list[Settings] = []
+    type_check_settings: list[Settings] = []
+
+    def fake_build_settings(mode: str) -> Settings:
+        observed_modes.append(mode)
+        return settings
+
+    def fake_verify_plant_crud(received_settings: Settings):
+        crud_settings.append(received_settings)
+        return verify_turso_crud.SmokeVerificationResult(
+            created_plant_id=12,
+            created_watering_record_id=34,
+        )
+
+    monkeypatch.setattr(sys, "argv", ["verify_turso_crud.py", "--mode", "local"])
+    monkeypatch.setattr(verify_turso_crud, "build_settings", fake_build_settings)
+    monkeypatch.setattr(
+        verify_turso_crud,
+        "run_migrations",
+        lambda received_settings: migrated_settings.append(received_settings),
+    )
+    monkeypatch.setattr(verify_turso_crud, "verify_plant_crud", fake_verify_plant_crud)
+    monkeypatch.setattr(
+        verify_turso_crud,
+        "verify_type_round_trip",
+        lambda received_settings: type_check_settings.append(received_settings),
+    )
+
+    verify_turso_crud.main()
+
+    captured = capsys.readouterr()
+    assert observed_modes == ["local"]
+    assert migrated_settings == [settings]
+    assert crud_settings == [settings]
+    assert type_check_settings == [settings]
+    assert captured.out == "OK mode=local createdPlantId=12 createdWateringRecordId=34\n"
+    assert captured.err == ""
 
 
 def test_build_settings_turso_requires_url_and_token(monkeypatch):
