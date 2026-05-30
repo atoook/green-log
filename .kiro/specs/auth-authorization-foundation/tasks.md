@@ -120,7 +120,7 @@
   - _Depends: 3.1, 3.3_
 
 - [ ] 4. Clerk webhook 同期を実装する
-- [ ] 4.1 (P) WebhookVerifier で Clerk event を署名検証する
+- [x] 4.1 (P) WebhookVerifier で Clerk event を署名検証する
   - raw body と Svix headers を使って webhook signature を検証する。
   - `user.created`、`user.updated`、`user.deleted` だけを typed event として受け付ける。
   - 検証できない event は UserService に到達せず、400 相当の失敗になる。
