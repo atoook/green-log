@@ -11,6 +11,7 @@ from app.schemas.watering import (
     TodayCareRead,
     WateringPlantSummaryRead,
     WateringRecordRead,
+    WateringRecordCreateResult,
 )
 
 
@@ -22,16 +23,22 @@ def utc_today() -> date:
     return datetime.now(timezone.utc).date()
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 class WateringService:
     def __init__(
         self,
         plant_repository: PlantRepository,
         watering_repository: WateringRepository,
         today_provider: Callable[[], date] = utc_today,
+        now_provider: Callable[[], datetime] = utc_now,
     ) -> None:
         self.plant_repository = plant_repository
         self.watering_repository = watering_repository
         self.today_provider = today_provider
+        self.now_provider = now_provider
 
     def get_today_care(self, owner_user_id: str) -> TodayCareRead:
         today = self.today_provider()
@@ -69,6 +76,49 @@ class WateringService:
             is_due_today=state.is_due_today,
             due_status=state.due_status,
             history=history,
+        )
+
+    def record_watering(
+        self,
+        owner_user_id: str,
+        plant_id: int,
+        watered_at: datetime | None = None,
+    ) -> WateringRecordCreateResult:
+        plant = self.plant_repository.get_by_id(owner_user_id, plant_id)
+        if plant is None:
+            raise WateringPlantNotFoundError("Plant not found")
+
+        watered_at = _as_utc_datetime(watered_at or self.now_provider())
+        record = WateringRecord(
+            owner_user_id=owner_user_id,
+            plant_id=plant_id,
+            watered_at=watered_at,
+        )
+        session = self.watering_repository.session
+
+        try:
+            created_record = self.watering_repository.add(record)
+            if created_record is None:
+                raise WateringPlantNotFoundError("Plant not found")
+
+            updated_plant = self.plant_repository.update_last_watered_at(
+                owner_user_id,
+                plant_id,
+                watered_at,
+            )
+            if updated_plant is None:
+                raise WateringPlantNotFoundError("Plant not found")
+
+            session.commit()
+            session.refresh(created_record)
+            session.refresh(updated_plant)
+        except Exception:
+            session.rollback()
+            raise
+
+        return WateringRecordCreateResult(
+            record=self._build_record(created_record),
+            state=self.get_plant_watering(owner_user_id, plant_id),
         )
 
     def _build_today_care_item(

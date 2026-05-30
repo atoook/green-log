@@ -163,12 +163,129 @@ def test_get_plant_watering_hides_missing_and_other_owner_plants(test_engine):
             service.get_plant_watering("owner-a", 9999)
 
 
-def _service(session: Session) -> WateringService:
-    return WateringService(
-        plant_repository=PlantRepository(session),
-        watering_repository=WateringRepository(session),
-        today_provider=lambda: FIXED_TODAY,
-    )
+def test_record_watering_creates_record_updates_summary_and_refreshes_state(
+    test_engine,
+):
+    now = datetime(2026, 5, 30, 10, 15, tzinfo=timezone.utc)
+
+    with Session(test_engine) as session:
+        plant = _create_plant(
+            session,
+            "owner-a",
+            "水やりするホヤ",
+            last_watered_at=datetime(2026, 5, 20, 9, 0, tzinfo=timezone.utc),
+            watering_cycle_days=7,
+        )
+        service = _service(session, now_provider=lambda: now)
+
+        before = service.get_today_care("owner-a")
+        result = service.record_watering("owner-a", plant.id)
+        after = service.get_today_care("owner-a")
+        session.refresh(plant)
+
+    assert [item.plant_id for item in before.items] == [plant.id]
+    assert after.items == []
+
+    assert result.record.plant_id == plant.id
+    assert result.record.watered_at == now
+    assert result.state.plant_id == plant.id
+    assert result.state.last_watered_at == now
+    assert result.state.next_watering_date == date(2026, 6, 6)
+    assert result.state.is_due_today is False
+    assert result.state.due_status is None
+    assert [record.id for record in result.state.history] == [result.record.id]
+    assert plant.last_watered_at is not None
+    assert _as_utc(plant.last_watered_at) == now
+    assert "owner_user_id" not in result.model_dump()
+    assert "ownerUserId" not in result.model_dump(by_alias=True)
+
+
+def test_record_watering_uses_explicit_watered_at_when_provided(test_engine):
+    now = datetime(2026, 5, 30, 10, 15, tzinfo=timezone.utc)
+    explicit_watered_at = datetime(2026, 5, 29, 21, 30, tzinfo=timezone.utc)
+
+    with Session(test_engine) as session:
+        plant = _create_plant(session, "owner-a", "夜に水やりしたポトス")
+        result = _service(session, now_provider=lambda: now).record_watering(
+            "owner-a",
+            plant.id,
+            watered_at=explicit_watered_at,
+        )
+        session.refresh(plant)
+
+    assert result.record.watered_at == explicit_watered_at
+    assert result.state.last_watered_at == explicit_watered_at
+    assert result.state.next_watering_date == date(2026, 6, 5)
+    assert plant.last_watered_at is not None
+    assert _as_utc(plant.last_watered_at) == explicit_watered_at
+
+
+def test_record_watering_hides_missing_and_other_owner_plants_without_records(
+    test_engine,
+):
+    with Session(test_engine) as session:
+        other_owner_plant = _create_plant(session, "owner-b", "Bのガジュマル")
+        service = _service(session)
+
+        with pytest.raises(WateringPlantNotFoundError):
+            service.record_watering("owner-a", other_owner_plant.id)
+
+        with pytest.raises(WateringPlantNotFoundError):
+            service.record_watering("owner-a", 9999)
+
+        other_owner_history = WateringRepository(session).list_for_plant(
+            "owner-b",
+            other_owner_plant.id,
+        )
+
+    assert other_owner_history == []
+
+
+def test_record_watering_rolls_back_record_when_summary_update_fails(test_engine):
+    now = datetime(2026, 5, 30, 10, 15, tzinfo=timezone.utc)
+
+    with Session(test_engine) as session:
+        plant = _create_plant(session, "owner-a", "rollback対象のシダ")
+        service = WateringService(
+            plant_repository=_FailingPlantRepository(session),
+            watering_repository=WateringRepository(session),
+            today_provider=lambda: FIXED_TODAY,
+            now_provider=lambda: now,
+        )
+
+        with pytest.raises(RuntimeError, match="summary update failed"):
+            service.record_watering("owner-a", plant.id)
+
+        session.refresh(plant)
+        history = WateringRepository(session).list_for_plant("owner-a", plant.id)
+
+    assert plant.last_watered_at is None
+    assert history == []
+
+
+class _FailingPlantRepository(PlantRepository):
+    def update_last_watered_at(
+        self,
+        owner_user_id: str,
+        plant_id: int,
+        watered_at: datetime,
+    ) -> Plant | None:
+        raise RuntimeError("summary update failed")
+
+
+def _service(
+    session: Session,
+    *,
+    now_provider=None,
+) -> WateringService:
+    kwargs = {
+        "plant_repository": PlantRepository(session),
+        "watering_repository": WateringRepository(session),
+        "today_provider": lambda: FIXED_TODAY,
+    }
+    if now_provider is not None:
+        kwargs["now_provider"] = now_provider
+    return WateringService(**kwargs)
 
 
 def _create_user(session: Session, owner_user_id: str) -> User:
