@@ -129,7 +129,7 @@
   - _Boundary: WebhookVerifier_
   - _Depends: 1.1_
 
-- [ ] 4.2 ClerkWebhookService と webhook route で user state を同期する
+- [x] 4.2 ClerkWebhookService と webhook route で user state を同期する
   - verified `user.created` / `user.updated` を application user upsert に接続する。
   - verified `user.deleted` を deleted status へ反映し、以後の protected operation を許可しない状態にする。
   - duplicate delivery や API lazy upsert 済み user に対して重複 row を作らない。

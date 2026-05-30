@@ -35,6 +35,10 @@ class UserService:
         )
 
     def sync_from_clerk_event(self, profile: UserProfileInput) -> User:
+        existing = self.repository.get_by_clerk_user_id(profile.clerk_user_id)
+        if existing is not None and existing.status == "deleted":
+            return existing
+
         return self.repository.upsert_by_clerk_user_id(
             self._new_user(profile),
             update_existing=True,

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.routers.plants import router as plants_router
+from app.routers.webhooks import router as webhooks_router
 
 app = FastAPI(title="Green Mate API")
 settings = get_settings()
@@ -17,6 +18,7 @@ app.add_middleware(
 )
 
 app.include_router(plants_router)
+app.include_router(webhooks_router)
 
 
 @app.get("/")
