@@ -12,6 +12,8 @@ from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import text
 
+from app.core.config import get_settings
+
 revision: str = "0002_create_users_and_plant_owners"
 down_revision: str | None = "0001_create_plants"
 branch_labels: str | Sequence[str] | None = None
@@ -21,7 +23,7 @@ depends_on: str | Sequence[str] | None = None
 def _legacy_owner_backfill_user_id() -> str | None:
     settings = context.get_context().config.attributes.get("settings")
     if settings is None:
-        return None
+        settings = get_settings()
     return settings.legacy_owner_backfill_user_id
 
 
