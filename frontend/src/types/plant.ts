@@ -11,9 +11,9 @@ export interface Plant {
 
 export interface PlantCreateInput {
   name: string
-  acquiredDate: string | null
-  memo: string | null
-  imageUrl: string | null
+  acquiredDate?: string | null
+  memo?: string | null
+  imageUrl?: string | null
   wateringCycleDays: number
 }
 
@@ -25,9 +25,4 @@ export interface PlantFormState {
   wateringCycleDays: string
 }
 
-export type ApiErrorType = 'validation' | 'not_found' | 'network' | 'server'
-
-export interface ApiError extends Error {
-  type: ApiErrorType
-  fieldErrors?: Record<string, string>
-}
+export type { ApiError, ApiErrorType } from './api'

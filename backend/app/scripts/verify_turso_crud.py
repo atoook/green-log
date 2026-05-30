@@ -13,8 +13,10 @@ from sqlmodel import Session
 from app.core.config import Settings
 from app.db.engine import create_database_engine
 from app.repositories.plant_repository import PlantRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.plant import PlantCreate
 from app.services.plant_service import PlantService
+from app.services.user_service import UserProfileInput, UserService
 
 
 def run_migrations(settings: Settings) -> None:
@@ -28,7 +30,7 @@ def build_settings(mode: str) -> Settings:
 
     if mode == "turso":
         turso_url = os.getenv("TURSO_DATABASE_URL") or file_settings.turso_database_url
-        token = os.getenv("TURSO_AUTH_TOKEN") or file_settings.turso_auth_token
+        token = os.getenv("TURSO_AUTH_TOKEN") or file_settings.turso_auth_token_value
         if not turso_url or not token:
             raise RuntimeError("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required for turso mode")
         return Settings(turso_database_url=turso_url, turso_auth_token=token)
@@ -43,10 +45,23 @@ def build_settings(mode: str) -> Settings:
 def verify_plant_crud(settings: Settings) -> int:
     engine = create_database_engine(settings)
     smoke_name = f"__green_log_smoke_{uuid.uuid4()}"
+    smoke_clerk_user_id = f"smoke-clerk-{uuid.uuid4()}"
 
     with Session(engine) as session:
+        user_service = UserService(UserRepository(session))
+        smoke_profile = UserProfileInput(
+            clerk_user_id=smoke_clerk_user_id,
+            primary_email=f"{smoke_clerk_user_id}@example.invalid",
+            display_name="Green Log Smoke User",
+        )
+        smoke_user = user_service.get_or_create_from_clerk(smoke_profile)
+        reused_smoke_user = user_service.get_or_create_from_clerk(smoke_profile)
+        if reused_smoke_user.id != smoke_user.id:
+            raise RuntimeError("Smoke user upsert created duplicate application users")
+
         service = PlantService(PlantRepository(session))
         created = service.create_plant(
+            smoke_user.id,
             PlantCreate(
                 name=smoke_name,
                 acquired_date=None,
@@ -55,8 +70,8 @@ def verify_plant_crud(settings: Settings) -> int:
                 watering_cycle_days=7,
             )
         )
-        plants = service.list_plants()
-        detail = service.get_plant(created.id)
+        plants = service.list_plants(smoke_user.id)
+        detail = service.get_plant(smoke_user.id, created.id)
 
     if created.id < 1:
         raise RuntimeError("Plant create did not return a generated id")
@@ -65,7 +80,19 @@ def verify_plant_crud(settings: Settings) -> int:
     if detail.name != smoke_name:
         raise RuntimeError("Detail read did not return the created plant")
 
+    assert_no_ownerless_plants(engine)
+
     return created.id
+
+
+def assert_no_ownerless_plants(engine) -> None:
+    with engine.connect() as connection:
+        ownerless_count = connection.execute(
+            text("SELECT COUNT(*) FROM plants WHERE owner_user_id IS NULL")
+        ).scalar_one()
+
+    if ownerless_count:
+        raise RuntimeError(f"Smoke verification found {ownerless_count} ownerless plants")
 
 
 def verify_type_round_trip(settings: Settings) -> None:
