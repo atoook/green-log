@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -13,6 +14,7 @@ from app.services.user_service import UserService
 
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+logger = logging.getLogger(__name__)
 
 
 def get_clerk_webhook_verifier() -> ClerkWebhookVerifier:
@@ -34,6 +36,11 @@ async def receive_clerk_webhook(
     try:
         event = await verifier.verify_request(request)
     except ClerkWebhookVerificationError as exc:
+        logger.warning(
+            "Clerk webhook rejected: reason=%s detail=%s",
+            exc.reason,
+            exc.safe_detail or "-",
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid webhook",
@@ -41,4 +48,3 @@ async def receive_clerk_webhook(
 
     webhook_service.handle_event(event)
     return {"received": True}
-
