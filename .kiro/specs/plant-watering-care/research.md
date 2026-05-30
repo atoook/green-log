@@ -301,3 +301,119 @@
 - Summary strategy: Plant に latest summary を持つ場合の整合性回復方法。
 - History scope: MVP の履歴表示件数と paging の有無。
 - Verification scope: Turso smoke に watering CRUD をどこまで入れるか。
+
+---
+
+# Design Discovery & Synthesis: plant-watering-care
+
+実施日時: 2026-05-30T08:08:23Z
+
+## Summary
+
+- **Feature**: `plant-watering-care`
+- **Discovery Scope**: Extension
+- **Key Findings**:
+  - 既存 Plant/Auth/Frontend の縦切りに新しい watering slice を追加するのが最も整合する。
+  - 外部依存は追加不要。既存の FastAPI / SQLModel / Alembic / Vue 3 / typed API client で実装できる。
+  - 既存 route policy tests は watering/care/today route 不在を固定しているため、feature 実装時に新しい境界へ更新する必要がある。
+
+## Research Log
+
+### 既存統合点
+- **Context**: Plant Watering Care は既存 Plant Registration の水やり周期と植物個体に依存する。
+- **Sources Consulted**: `backend/app/models/plant.py`, `backend/app/repositories/plant_repository.py`, `backend/app/services/plant_service.py`, `backend/app/routers/plants.py`, `frontend/src/api/plants.ts`, `frontend/src/composables/usePlants.ts`, `frontend/src/composables/usePlantDetail.ts`, `frontend/src/router/index.ts`
+- **Findings**:
+  - Backend は Router / Service / Repository / Model / Schema の分離が明確。
+  - Frontend は types -> api -> composables -> components -> pages -> router の依存方向を持つ。
+  - Plant detail は植物基本情報だけを扱い、水やり状態を別 composable/component として追加できる。
+- **Implications**:
+  - Watering は新規 domain slice として追加し、既存 Plant API を大きく膨らませない。
+  - Plant model には latest summary のみ追加し、履歴そのものは WateringRecord に分ける。
+
+### 認証と owner scope
+- **Context**: 水やり記録はユーザー所有の private data であり、他ユーザーの存在を漏らしてはならない。
+- **Sources Consulted**: `.kiro/steering/auth.md`, `backend/app/auth/dependencies.py`, `backend/tests/test_plants_api.py`, `backend/tests/test_backend_integration_contract.py`
+- **Findings**:
+  - CurrentUser は internal application user id を返す。
+  - Plant detail は owner scoped lookup により other-owner 404 を実現している。
+  - API response は owner id や Clerk ID を返さない方針が既に固定されている。
+- **Implications**:
+  - WateringRecord も owner_user_id を持つ。
+  - plant_id だけで record を作らず、必ず owner scoped Plant lookup を通してから作成する。
+
+### 日付基準と future notification
+- **Context**: 要件は日単位の今日のお世話を求めるが、ユーザー timezone 設定は scope 外。
+- **Sources Consulted**: `.kiro/specs/plant-watering-care/requirements.md`, `.kiro/specs/plant-watering-care/brief.md`, `.kiro/steering/tech.md`
+- **Findings**:
+  - datetime の API 表現は UTC ISO 文字列が steering 方針。
+  - 通知設定、通知時刻、通知権限は範囲外。
+- **Implications**:
+  - MVP の `today` 判定は backend UTC date を authoritative にする。
+  - timezone-aware notification が入る場合は、date basis と schedule storage の再検討を revalidation trigger にする。
+
+## Architecture Pattern Evaluation
+
+| Option | Description | Strengths | Risks / Limitations | Notes |
+|--------|-------------|-----------|---------------------|-------|
+| Plant 拡張中心 | Plant に最新水やり日時を追加し、Plant API を中心に表示する | 実装が小さい | 履歴要件と将来拡張に弱い | 採用しない |
+| Watering domain 新設 | 水やり履歴と計算をすべて Watering domain に置き、Plant に summary を持たない | 責務分離が強い | 今日のお世話判定と一覧が重くなりやすい | 単独採用しない |
+| Hybrid | WateringRecord を履歴 source of truth、Plant に `last_watered_at` summary、予定日は計算 | 要件と MVP 性能のバランスがよい | summary 整合性と transaction 境界の設計が必要 | 採用 |
+
+## Design Decisions
+
+### Decision: Hybrid summary model
+- **Context**: 最新水やり日時、履歴、今日のお世話を同時に満たす必要がある。
+- **Alternatives Considered**:
+  1. Plant に最新日時だけ保存する
+  2. 履歴だけ保存して毎回集計する
+  3. 履歴を保存し Plant に最新 summary を持つ
+- **Selected Approach**: WateringRecord を source of truth とし、Plant の `last_watered_at` を派生 summary として更新する。
+- **Rationale**: 履歴確認と今日のお世話の効率を両立でき、Discovery brief の方針とも一致する。
+- **Trade-offs**: summary 整合性が新しいリスクになる。
+- **Follow-up**: record 作成と summary 更新を同一 transaction で扱い、必要なら履歴から summary を再構築する検証 script を後続で検討する。
+
+### Decision: Dedicated care and watering endpoints
+- **Context**: Plant Registration の責務を植物基本情報に保ちたい。
+- **Alternatives Considered**:
+  1. `GET /plants` と `GET /plants/{plant_id}` を全面拡張する
+  2. `/care/today` と `/plants/{plant_id}/watering` 系 endpoint を追加する
+- **Selected Approach**: `/care/today` を今日のお世話 read model、`/plants/{plant_id}/watering` を植物別水やり状態、`/plants/{plant_id}/watering-records` を記録作成として定義する。
+- **Rationale**: Product 文言の「今日のお世話」と domain 操作の「水やり記録」を分けられる。
+- **Trade-offs**: frontend detail page は Plant と Watering の 2 つの API を扱う。
+- **Follow-up**: 実装時は retry と partial failure 表示を composable で明確化する。
+
+### Decision: No new dependencies
+- **Context**: 日付計算と CRUD は既存 stack で実装できる。
+- **Alternatives Considered**:
+  1. date utility library を導入する
+  2. Python/Vue 標準機能で扱う
+- **Selected Approach**: 新しい dependency は追加しない。
+- **Rationale**: MVP の日付計算は `date` と UTC ISO datetime で十分であり、依存追加のコストを避ける。
+- **Trade-offs**: timezone-aware scheduling はこの設計では扱わない。
+- **Follow-up**: 通知や timezone 設定が入る場合は改めて日付ライブラリや schedule state を評価する。
+
+### Decision: MVP date basis is backend UTC date
+- **Context**: 「今日」の基準が未設定のままでは API と UI がずれる。
+- **Alternatives Considered**:
+  1. browser local date を API に渡す
+  2. backend UTC date を authoritative にする
+  3. user timezone profile を追加する
+- **Selected Approach**: MVP では backend UTC date を authoritative にする。
+- **Rationale**: user timezone profile と通知設定は scope 外であり、backend が一貫した判定とテストを提供できる。
+- **Trade-offs**: local midnight 付近ではユーザー感覚の「今日」とずれる可能性がある。
+- **Follow-up**: timezone profile、通知時刻、通知送信が追加される場合は revalidation する。
+
+## Risks & Mitigations
+
+- Summary inconsistency — record 作成と Plant summary 更新を同一 service transaction に閉じる。
+- Existing route policy tests failure — watering/care route を許可する regression test へ更新する。
+- Date boundary mismatch — MVP は UTC date と明記し、timezone feature 追加時の revalidation trigger にする。
+- Frontend partial failure — Plant basic information と watering state の失敗表示を分け、基本情報をできるだけ維持する。
+
+## References
+
+- `.kiro/steering/product.md` — お世話、記録、private data のプロダクト方針
+- `.kiro/steering/tech.md` — stack、datetime、owner scope、verification command
+- `.kiro/steering/structure.md` — backend/frontend の配置と dependency direction
+- `.kiro/steering/auth.md` — owner scope、protected API、field 非公開ルール
+- `.kiro/specs/plant-watering-care/research.md` — gap analysis
