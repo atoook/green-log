@@ -176,7 +176,7 @@
   - _Boundary: Plant API Tests_
   - _Depends: 5.2_
 
-- [ ] 5.4 Local SQLite と Turso/libSQL の owner-scoped smoke を更新する
+- [x] 5.4 Local SQLite と Turso/libSQL の owner-scoped smoke を更新する
   - smoke user を作成し、その internal user id で Plant CRUD を実行する。
   - migration 後に ownerless Plant が作成されないことを local SQLite で検証する。
   - Turso/libSQL path でも user upsert と owner-scoped Plant create/list/detail が通ることを検証する。
