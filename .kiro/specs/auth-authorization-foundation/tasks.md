@@ -63,7 +63,7 @@
   - _Boundary: CurrentUserDependency_
   - _Depends: 2.1, 2.2_
 
-- [ ] 2.4 CurrentUserDependency の test override fixture を追加する
+- [x] 2.4 CurrentUserDependency の test override fixture を追加する
   - protected router test で current user を user A / user B / disabled user に差し替えられる fixture を用意する。
   - dependency override が test ごとに cleanup され、別 test の current user に漏れない状態にする。
   - Plant API と webhook 後状態の test が共通 fixture で current user を再現できる状態になる。
