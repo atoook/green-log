@@ -325,7 +325,7 @@ def test_plant_route_policy_only_exposes_owned_plant_endpoints():
         for method in route.methods
     }
     watering_mvp_routes = {
-        ("GET", "/care/today"),
+        ("GET", "/care/upcoming"),
         ("GET", "/care/watering-heatmap"),
         ("GET", "/plants/{plant_id}/watering"),
         ("POST", "/plants/{plant_id}/watering-records"),

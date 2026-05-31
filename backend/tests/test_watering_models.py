@@ -6,8 +6,9 @@ from app.models import WateringRecord
 from app.schemas.watering import (
     PlantWateringDetailRead,
     PlantWateringStateRead,
-    TodayCareItemRead,
-    TodayCareRead,
+    UpcomingCareItemRead,
+    UpcomingCareRead,
+    UpcomingCareSectionRead,
     WateringHeatmapDayRead,
     WateringHeatmapPlantRead,
     WateringHeatmapRead,
@@ -76,8 +77,8 @@ def test_watering_detail_schema_represents_unrecorded_plant_without_owner_fields
     assert "owner_user_id" not in payload
 
 
-def test_today_care_schema_serializes_due_item_with_camel_case_and_utc_datetime():
-    item = TodayCareItemRead(
+def test_upcoming_care_schema_serializes_sections_with_camel_case_and_utc_datetime():
+    item = UpcomingCareItemRead(
         plant_id=2,
         last_watered_at=datetime(2026, 5, 23, 9, 30),
         next_watering_date=date(2026, 5, 30),
@@ -86,26 +87,41 @@ def test_today_care_schema_serializes_due_item_with_camel_case_and_utc_datetime(
         plant=WateringPlantSummaryRead(
             id=2,
             name="リビングのモンステラ",
+            acquired_date=date(2026, 5, 1),
             image_url=None,
             watering_cycle_days=7,
         ),
     )
-    today_care = TodayCareRead(today=date(2026, 5, 30), items=[item])
+    upcoming_care = UpcomingCareRead(
+        start_date=date(2026, 5, 30),
+        days=1,
+        sections=[
+            UpcomingCareSectionRead(
+                date=date(2026, 5, 30),
+                kind="today",
+                items=[item],
+            )
+        ],
+    )
 
-    payload = today_care.model_dump(mode="json", by_alias=True)
+    payload = upcoming_care.model_dump(mode="json", by_alias=True)
 
-    assert payload["today"] == "2026-05-30"
-    assert payload["items"][0]["lastWateredAt"] == "2026-05-23T09:30:00Z"
-    assert payload["items"][0]["nextWateringDate"] == "2026-05-30"
-    assert payload["items"][0]["dueStatus"] == "due_today"
-    assert payload["items"][0]["plant"] == {
+    assert payload["startDate"] == "2026-05-30"
+    assert payload["days"] == 1
+    assert payload["sections"][0]["date"] == "2026-05-30"
+    assert payload["sections"][0]["kind"] == "today"
+    assert payload["sections"][0]["items"][0]["lastWateredAt"] == "2026-05-23T09:30:00Z"
+    assert payload["sections"][0]["items"][0]["nextWateringDate"] == "2026-05-30"
+    assert payload["sections"][0]["items"][0]["dueStatus"] == "due_today"
+    assert payload["sections"][0]["items"][0]["plant"] == {
         "id": 2,
         "name": "リビングのモンステラ",
+        "acquiredDate": "2026-05-01",
         "imageUrl": None,
         "wateringCycleDays": 7,
     }
-    assert "ownerUserId" not in payload["items"][0]
-    assert "ownerUserId" not in payload["items"][0]["plant"]
+    assert "ownerUserId" not in payload["sections"][0]["items"][0]
+    assert "ownerUserId" not in payload["sections"][0]["items"][0]["plant"]
 
 
 def test_create_result_schema_represents_record_and_history_without_extra_care_types():

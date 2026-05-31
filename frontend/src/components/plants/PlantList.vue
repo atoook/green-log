@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { ApiError, Plant } from '../../types/plant'
+import { daysSinceArrivalLabel } from '../../utils/arrival'
 
 defineProps<{
   plants: Plant[]
@@ -37,6 +38,7 @@ function listErrorMessage(error: ApiError): string {
 function markImageBroken(plantId: number): void {
   brokenImageIds.value = new Set([...brokenImageIds.value, plantId])
 }
+
 </script>
 
 <template>
@@ -77,8 +79,13 @@ function markImageBroken(plantId: number): void {
           <span v-else class="flex h-16 w-16 items-center justify-center rounded-md bg-soil-100 text-sm text-soil-700">
             記録
           </span>
-          <span>
+          <span class="min-w-0">
             <span class="block font-semibold text-stone-950">{{ plant.name }}</span>
+            <span
+              class="mt-1 inline-flex w-fit max-w-full rounded-md bg-leaf-50 px-2.5 py-1 text-xs font-semibold text-leaf-700"
+            >
+              {{ daysSinceArrivalLabel(plant.acquiredDate) }}
+            </span>
             <span class="block text-sm text-stone-600">{{ plant.wateringCycleDays }}日ごとにお世話</span>
           </span>
         </button>

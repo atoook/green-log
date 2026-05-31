@@ -4,13 +4,14 @@ import { test } from 'node:test'
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
-test('TodayCareList exposes presentational props and emits without API or auth dependencies', async () => {
-  const source = await readSource('src/components/watering/TodayCareList.vue')
+test('UpcomingCareList exposes presentational props and emits without API or auth dependencies', async () => {
+  const source = await readSource('src/components/watering/UpcomingCareList.vue')
 
   assert.match(source, /import\s+WateringActionButton\s+from\s+['"]\.\/WateringActionButton\.vue['"]/)
   assert.match(source, /import\s+type\s+\{\s*ApiError\s*\}\s+from\s+['"]\.\.\/\.\.\/types\/api['"]/)
-  assert.match(source, /import\s+type\s+\{\s*TodayCareItem\s*\}\s+from\s+['"]\.\.\/\.\.\/types\/watering['"]/)
-  assert.match(source, /items:\s*TodayCareItem\[\]/)
+  assert.match(source, /import\s+type\s+\{\s*UpcomingCareItem,\s*UpcomingCareSection\s*\}\s+from\s+['"]\.\.\/\.\.\/types\/watering['"]/)
+  assert.match(source, /import\s+\{\s*daysSinceArrivalLabel\s*\}\s+from\s+['"]\.\.\/\.\.\/utils\/arrival['"]/)
+  assert.match(source, /sections:\s*UpcomingCareSection\[\]/)
   assert.match(source, /isLoading:\s*boolean/)
   assert.match(source, /error:\s*ApiError\s*\|\s*null/)
   assert.match(source, /recordingError:\s*ApiError\s*\|\s*null/)
@@ -21,16 +22,21 @@ test('TodayCareList exposes presentational props and emits without API or auth d
   assert.doesNotMatch(source, /fetch\(|createWateringApiClient|useAuthenticatedApi|Clerk|useRouter|useRoute|Authorization|Bearer/)
 })
 
-test('TodayCareList renders loading, error, empty, and recording failure states with safe copy', async () => {
-  const source = await readSource('src/components/watering/TodayCareList.vue')
+test('UpcomingCareList renders loading, error, empty, and recording failure states with safe copy', async () => {
+  const source = await readSource('src/components/watering/UpcomingCareList.vue')
 
   assert.match(source, /v-if=["']isLoading["']/)
   assert.match(source, /v-else-if=["']error["']/)
-  assert.match(source, /v-else-if=["']items\.length\s*===\s*0["']/)
+  assert.match(source, /v-for=["']section in sections["']/)
+  assert.match(source, /v-if=["']section\.items\.length\s*===\s*0["']/)
   assert.match(source, /v-if=["']recordingError["']/)
   assert.match(source, /今日のお世話/)
+  assert.match(source, /明日のお世話/)
+  assert.match(source, /明後日のお世話/)
+  assert.match(source, /直近のお世話予定を表示できません/)
+  assert.match(source, /直近のお世話予定を読み込めません/)
   assert.match(source, /読み込んでいます/)
-  assert.match(source, /今日必要な水やりはありません/)
+  assert.match(source, /この日に必要な水やりはありません/)
   assert.match(source, /植物を登録/)
   assert.match(source, /記録できませんでした/)
   assert.match(source, /@click=["']emit\('retry'\)["']/)
@@ -44,26 +50,31 @@ test('TodayCareList renders loading, error, empty, and recording failure states 
   assert.doesNotMatch(source, /タスク|管理|通知|スキップ|延期|カレンダー|お世話種別/)
 })
 
-test('TodayCareList displays due item details and delegates record events to WateringActionButton', async () => {
-  const source = await readSource('src/components/watering/TodayCareList.vue')
+test('UpcomingCareList displays due item details and delegates record events to WateringActionButton', async () => {
+  const source = await readSource('src/components/watering/UpcomingCareList.vue')
 
-  assert.match(source, /v-for=["']item in items["']/)
-  assert.match(source, /:key=["']item\.plantId["']/)
+  assert.match(source, /v-for=["']item in section\.items["']/)
+  assert.match(source, /:key=["']`\$\{section\.date\}-\$\{item\.plantId\}`["']/)
   assert.match(source, /item\.plant\.name/)
+  assert.match(source, /item\.plant\.acquiredDate/)
   assert.match(source, /item\.plant\.wateringCycleDays/)
+  assert.match(source, /daysSinceArrivalLabel\(item\.plant\.acquiredDate\)/)
   assert.match(source, /lastWateredLabel\(item\)/)
   assert.match(source, /nextWateringLabel\(item\)/)
   assert.match(source, /dueStatusLabel\(item\)/)
   assert.match(source, /dueStatusClasses\(item\)/)
+  assert.match(source, /sectionTitle\(section\)/)
+  assert.match(source, /sectionEmptyMessage\(section\)/)
   assert.match(source, /未記録/)
   assert.match(source, /今日がお世話の日/)
   assert.match(source, /予定日を過ぎています/)
+  assert.match(source, /予定を確認/)
   assert.match(source, /未確定/)
   assert.match(source, /<WateringActionButton[\s\S]*:is-recording=["']Boolean\(isRecordingByPlantId\[item\.plantId\]\)["'][\s\S]*:has-error=["']Boolean\(recordingError\)["'][\s\S]*:was-successful=["']successfulPlantId === item\.plantId["'][\s\S]*@record=["']emit\('record', item\.plantId\)["']/)
 })
 
-test('TodayCareList keeps mobile layout readable without scope creep controls', async () => {
-  const source = await readSource('src/components/watering/TodayCareList.vue')
+test('UpcomingCareList keeps mobile layout readable without scope creep controls', async () => {
+  const source = await readSource('src/components/watering/UpcomingCareList.vue')
 
   assert.match(source, /grid gap-3/)
   assert.match(source, /md:grid-cols-\[minmax\(0,1fr\)_auto\]/)
