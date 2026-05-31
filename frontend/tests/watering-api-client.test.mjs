@@ -35,18 +35,29 @@ function createRecordingAuthenticatedClient(resultByPath = new Map()) {
   }
 }
 
-test('createWateringApiClient delegates today care requests to the authenticated client', async () => {
+test('createWateringApiClient delegates upcoming care requests to the authenticated client', async () => {
   const { createWateringApiClient } = await loadWateringApiModule()
-  const todayCare = {
-    today: '2026-05-30',
-    items: [],
+  const upcomingCare = {
+    startDate: '2026-05-30',
+    days: 3,
+    sections: [],
   }
-  const { calls, client } = createRecordingAuthenticatedClient(new Map([['/care/today', todayCare]]))
+  const { calls, client } = createRecordingAuthenticatedClient(
+    new Map([
+      ['/care/upcoming', { ...upcomingCare, days: 1 }],
+      ['/care/upcoming?days=3', upcomingCare],
+    ]),
+  )
 
-  const result = await createWateringApiClient(client).getTodayCare()
+  const defaultResult = await createWateringApiClient(client).getUpcomingCare()
+  const threeDayResult = await createWateringApiClient(client).getUpcomingCare(3)
 
-  assert.deepEqual(result, todayCare)
-  assert.deepEqual(calls, [{ path: '/care/today', init: undefined }])
+  assert.deepEqual(defaultResult, { ...upcomingCare, days: 1 })
+  assert.deepEqual(threeDayResult, upcomingCare)
+  assert.deepEqual(calls, [
+    { path: '/care/upcoming', init: undefined },
+    { path: '/care/upcoming?days=3', init: undefined },
+  ])
 })
 
 test('createWateringApiClient delegates plant watering detail requests by plant id', async () => {

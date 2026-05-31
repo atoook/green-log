@@ -120,7 +120,7 @@ def test_owner_model_gate_keeps_adjacent_domain_routes_out_of_scope():
     }
     paths = {path for _, path in routes}
     watering_mvp_routes = {
-        ("GET", "/care/today"),
+        ("GET", "/care/upcoming"),
         ("GET", "/care/watering-heatmap"),
         ("GET", "/plants/{plant_id}/watering"),
         ("POST", "/plants/{plant_id}/watering-records"),

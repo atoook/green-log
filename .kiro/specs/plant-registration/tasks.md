@@ -164,5 +164,25 @@
   - _Depends: 4.1, 4.3_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.5, 4.1, 4.2, 4.3, 6.3, 6.4, 6.5, 6.6, 7.1, 7.2, 7.3, 7.4_
 
+- [x] 5. 植物一覧のいっしょに暮らしている日数表示
+- [x] 5.1 PlantList にいっしょに暮らしている日数ラベルを追加する
+  - `acquiredDate` がある植物ごとに、一覧上でいっしょに暮らしている日数ラベルを表示する。
+  - 今日のローカル日付と `acquiredDate` の差分を日付単位で計算し、`いっしょに暮らしてXX日目` として表示する。
+  - 今日迎えた植物は `いっしょに暮らして0日目` として扱う。
+  - `acquiredDate` がない場合は `createdAt` から推測せず、お迎え日が未記録であることを表示する。
+  - 既存の画像プレビュー、画像なしフォールバック、空状態、再試行、選択動作は変えない。
+  - Done when 過去の `acquiredDate`、今日の `acquiredDate`、`acquiredDate` なしの植物が期待どおりの一覧ラベルを表示し、ルート選択動作が変わっていない。
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 7.1, 7.2, 7.3, 7.4_
+  - _Boundary: PlantList_
+
+- [x] 5.2 一覧の日数表示に対する回帰検証を追加する
+  - 12日前に迎えた植物、今日迎えた植物、お迎え日が未記録の植物について、フロントエンド UI の検証を追加する。
+  - 既存の画像あり、画像なしフォールバック、空状態、項目選択の検証が、新しいラベル追加後も安定していることを確認する。
+  - この表示改善に backend API、schema、persistence の変更が不要であることを確認する。
+  - Done when フロントエンドテストと型またはビルド確認により、日数ラベルと既存の一覧状態が安定していることを証明できる。
+  - _Depends: 5.1_
+  - _Requirements: 3.3, 3.4, 3.5, 3.6, 3.7, 5.2, 7.4_
+  - _Boundary: PlantList, Frontend UI Tests_
+
 ## Implementation Notes
 - Turso remote smoke passed using `backend/.env` credentials. The smoke command verified Alembic migration, minimal Plant CRUD, UUID text, UTC datetime text, and boolean round-trip behavior against the configured development database.

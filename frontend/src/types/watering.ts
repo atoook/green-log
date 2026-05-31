@@ -3,6 +3,7 @@ export type DueStatus = 'unrecorded' | 'due_today' | 'overdue'
 export interface WateringPlantSummary {
   id: number
   name: string
+  acquiredDate: string | null
   imageUrl: string | null
   wateringCycleDays: number
 }
@@ -22,13 +23,22 @@ export interface WateringRecord {
   createdAt: string
 }
 
-export interface TodayCareItem extends PlantWateringState {
+export interface UpcomingCareItem extends PlantWateringState {
   plant: WateringPlantSummary
 }
 
-export interface TodayCare {
-  today: string
-  items: TodayCareItem[]
+export type UpcomingCareSectionKind = 'today' | 'tomorrow' | 'day_after_tomorrow' | 'future'
+
+export interface UpcomingCareSection {
+  date: string
+  kind: UpcomingCareSectionKind
+  items: UpcomingCareItem[]
+}
+
+export interface UpcomingCare {
+  startDate: string
+  days: number
+  sections: UpcomingCareSection[]
 }
 
 export interface PlantWateringDetail extends PlantWateringState {

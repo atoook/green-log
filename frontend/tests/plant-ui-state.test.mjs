@@ -48,6 +48,36 @@ test('PlantList has distinct safe error messages and own-plant empty state', asy
   assert.doesNotMatch(source, outOfScopeUi)
 })
 
+test('PlantList highlights days since arrival as companion time without backend fallback', async () => {
+  const [source, helperSource] = await Promise.all([
+    readSource('src/components/plants/PlantList.vue'),
+    readSource('src/utils/arrival.ts'),
+  ])
+  const functionMatch = helperSource.match(/export\s+function\s+daysSinceArrivalLabel[\s\S]*?\n}/)
+
+  assert.ok(functionMatch)
+
+  const functionSource = functionMatch[0]
+    .replace(/export\s+function/, 'function')
+    .replace(/acquiredDate:\s*string\s*\|\s*null/, 'acquiredDate')
+    .replace(/\):\s*string\s*\{/, ') {')
+  const daysSinceArrivalLabel = new Function(`${functionSource}; return daysSinceArrivalLabel`)()
+
+  assert.equal(daysSinceArrivalLabel('2026-05-19', new Date(2026, 4, 31, 23, 0)), 'いっしょに暮らして12日目')
+  assert.equal(daysSinceArrivalLabel('2026-05-31', new Date(2026, 4, 31, 0, 0)), 'いっしょに暮らして0日目')
+  assert.equal(daysSinceArrivalLabel(null, new Date(2026, 4, 31)), 'お迎え日は未記録')
+  assert.match(source, /import\s+\{\s*daysSinceArrivalLabel\s*\}\s+from\s+['"]\.\.\/\.\.\/utils\/arrival['"]/)
+  assert.match(helperSource, /function\s+daysSinceArrivalLabel\s*\([^)]*acquiredDate[^)]*string\s*\|\s*null[^)]*today\s*=\s*new Date/)
+  assert.match(helperSource, /いっしょに暮らして\$\{daysSinceArrival\}日目/)
+  assert.match(helperSource, /お迎え日は未記録/)
+  assert.match(source, /inline-flex[\s\S]*bg-leaf-50[\s\S]*text-xs[\s\S]*font-semibold/)
+  assert.match(helperSource, /const\s+millisecondsPerDay\s*=\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000/)
+  assert.match(helperSource, /Date\.UTC\([^)]*getFullYear\(\)[\s\S]*getMonth\(\)[\s\S]*getDate\(\)/)
+  assert.match(helperSource, /Date\.UTC\([^)]*acquiredYear[\s\S]*acquiredMonth\s*-\s*1[\s\S]*acquiredDay/)
+  assert.doesNotMatch(source, /daysSinceArrivalLabel\([^)]*createdAt/)
+  assert.doesNotMatch(helperSource, /createdAt[\s\S]{0,120}いっしょに暮らして/)
+})
+
 test('PlantDetail keeps not-found behavior and safe auth/forbidden messages', async () => {
   const source = await readSource('src/components/plants/PlantDetail.vue')
 

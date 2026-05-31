@@ -7,31 +7,31 @@ const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'u
 const outOfScopeCareUi =
   /通知|スキップ|延期|カレンダー|ダッシュボード|タスク|管理|Notification|permission|skip|defer|calendar|dashboard/i
 
-test('TodayCarePage composes useTodayCare and TodayCareList for the in-page watering flow', async () => {
+test('TodayCarePage composes useUpcomingCare and UpcomingCareList for the in-page watering flow', async () => {
   const source = await readSource('src/pages/TodayCarePage.vue')
 
   assert.match(source, /import\s+\{\s*ref\s*\}\s+from\s+['"]vue['"]/)
   assert.match(
     source,
-    /import\s+TodayCareList\s+from\s+['"]\.\.\/components\/watering\/TodayCareList\.vue['"]/,
+    /import\s+UpcomingCareList\s+from\s+['"]\.\.\/components\/watering\/UpcomingCareList\.vue['"]/,
   )
-  assert.match(source, /import\s+\{\s*useTodayCare\s*\}\s+from\s+['"]\.\.\/composables\/useTodayCare['"]/)
+  assert.match(source, /import\s+\{\s*useUpcomingCare\s*\}\s+from\s+['"]\.\.\/composables\/useUpcomingCare['"]/)
   assert.match(
     source,
-    /const\s+\{[\s\S]*items[\s\S]*isLoading[\s\S]*error[\s\S]*recordingError[\s\S]*isRecordingByPlantId[\s\S]*successMessage[\s\S]*loadTodayCare[\s\S]*recordWatering[\s\S]*\}\s*=\s*useTodayCare\(\)/,
+    /const\s+\{[\s\S]*sections[\s\S]*isLoading[\s\S]*error[\s\S]*recordingError[\s\S]*isRecordingByPlantId[\s\S]*successMessage[\s\S]*loadUpcomingCare[\s\S]*recordWatering[\s\S]*\}\s*=\s*useUpcomingCare\(\)/,
   )
   assert.match(source, /const\s+successfulPlantId\s*=\s*ref<number\s*\|\s*null>\(null\)/)
   assert.match(
     source,
-    /async\s+function\s+recordTodayCare\(plantId:\s*number\):\s*Promise<void>\s*\{[\s\S]*const\s+result\s*=\s*await\s+recordWatering\(plantId\)[\s\S]*successfulPlantId\.value\s*=\s*result\?\.record\.plantId\s*\?\?\s*null/,
+    /async\s+function\s+recordUpcomingCare\(plantId:\s*number\):\s*Promise<void>\s*\{[\s\S]*const\s+result\s*=\s*await\s+recordWatering\(plantId\)[\s\S]*successfulPlantId\.value\s*=\s*result\?\.record\.plantId\s*\?\?\s*null/,
   )
   assert.match(
     source,
-    /function\s+retryTodayCare\(\):\s*void\s*\{[\s\S]*successfulPlantId\.value\s*=\s*null[\s\S]*void\s+loadTodayCare\(\)/,
+    /function\s+retryUpcomingCare\(\):\s*void\s*\{[\s\S]*successfulPlantId\.value\s*=\s*null[\s\S]*void\s+loadUpcomingCare\(\)/,
   )
   assert.match(
     source,
-    /<TodayCareList[\s\S]*:items=["']items["'][\s\S]*:is-loading=["']isLoading["'][\s\S]*:error=["']error["'][\s\S]*:recording-error=["']recordingError["'][\s\S]*:is-recording-by-plant-id=["']isRecordingByPlantId["'][\s\S]*:successful-plant-id=["']successfulPlantId["'][\s\S]*@record=["']recordTodayCare["'][\s\S]*@retry=["']retryTodayCare["']/,
+    /<UpcomingCareList[\s\S]*:sections=["']sections["'][\s\S]*:is-loading=["']isLoading["'][\s\S]*:error=["']error["'][\s\S]*:recording-error=["']recordingError["'][\s\S]*:is-recording-by-plant-id=["']isRecordingByPlantId["'][\s\S]*:successful-plant-id=["']successfulPlantId["'][\s\S]*@record=["']recordUpcomingCare["'][\s\S]*@retry=["']retryUpcomingCare["']/,
   )
 })
 

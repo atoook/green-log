@@ -8,6 +8,7 @@ from app.schemas.plant import alias_config
 
 
 DueStatus = Literal["unrecorded", "due_today", "overdue"]
+UpcomingCareSectionKind = Literal["today", "tomorrow", "day_after_tomorrow", "future"]
 WateringHeatmapLevel = Literal[0, 1, 2, 3, 4]
 
 
@@ -24,6 +25,7 @@ class WateringSchema(SQLModel):
 class WateringPlantSummaryRead(WateringSchema):
     id: int
     name: str
+    acquired_date: date | None = None
     image_url: str | None = None
     watering_cycle_days: int
 
@@ -53,13 +55,20 @@ class WateringRecordRead(WateringSchema):
         return serialize_utc_datetime(value)
 
 
-class TodayCareItemRead(PlantWateringStateRead):
+class UpcomingCareItemRead(PlantWateringStateRead):
     plant: WateringPlantSummaryRead
 
 
-class TodayCareRead(WateringSchema):
-    today: date
-    items: list[TodayCareItemRead]
+class UpcomingCareSectionRead(WateringSchema):
+    date: date
+    kind: UpcomingCareSectionKind
+    items: list[UpcomingCareItemRead]
+
+
+class UpcomingCareRead(WateringSchema):
+    start_date: date
+    days: int
+    sections: list[UpcomingCareSectionRead]
 
 
 class PlantWateringDetailRead(PlantWateringStateRead):

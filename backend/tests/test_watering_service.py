@@ -16,7 +16,7 @@ from app.services.watering_service import (
 FIXED_TODAY = date(2026, 5, 30)
 
 
-def test_today_care_includes_unrecorded_due_today_and_overdue_owned_plants(
+def test_upcoming_care_groups_today_tomorrow_and_day_after_tomorrow_owned_plants(
     test_engine,
 ):
     with Session(test_engine) as session:
@@ -35,40 +35,56 @@ def test_today_care_includes_unrecorded_due_today_and_overdue_owned_plants(
             last_watered_at=datetime(2026, 5, 20, 9, 0, tzinfo=timezone.utc),
             watering_cycle_days=7,
         )
-        not_due = _create_plant(
+        tomorrow = _create_plant(
             session,
             "owner-a",
-            "まだ不要なサンスベリア",
+            "明日予定のサンスベリア",
             last_watered_at=datetime(2026, 5, 29, 9, 0, tzinfo=timezone.utc),
-            watering_cycle_days=7,
+            watering_cycle_days=2,
+        )
+        day_after_tomorrow = _create_plant(
+            session,
+            "owner-a",
+            "明後日予定のホヤ",
+            last_watered_at=datetime(2026, 5, 29, 9, 0, tzinfo=timezone.utc),
+            watering_cycle_days=3,
         )
         other_owner = _create_plant(session, "owner-b", "Bの未記録")
 
-        care = _service(session).get_today_care("owner-a")
+        care = _service(session).get_upcoming_care("owner-a", days=3)
 
-    assert care.today == FIXED_TODAY
-    assert [item.plant_id for item in care.items] == [
+    assert care.start_date == FIXED_TODAY
+    assert care.days == 3
+    assert [(section.date, section.kind) for section in care.sections] == [
+        (FIXED_TODAY, "today"),
+        (date(2026, 5, 31), "tomorrow"),
+        (date(2026, 6, 1), "day_after_tomorrow"),
+    ]
+    assert [item.plant_id for item in care.sections[0].items] == [
         unrecorded.id,
         due_today.id,
         overdue.id,
     ]
-    assert not_due.id not in [item.plant_id for item in care.items]
-    assert other_owner.id not in [item.plant_id for item in care.items]
+    assert [item.plant_id for item in care.sections[1].items] == [tomorrow.id]
+    assert [item.plant_id for item in care.sections[2].items] == [day_after_tomorrow.id]
+    assert other_owner.id not in [
+        item.plant_id for section in care.sections for item in section.items
+    ]
 
-    assert care.items[0].due_status == "unrecorded"
-    assert care.items[0].is_due_today is True
-    assert care.items[0].last_watered_at is None
-    assert care.items[0].next_watering_date is None
-    assert care.items[0].plant.name == "未記録のポトス"
+    assert care.sections[0].items[0].due_status == "unrecorded"
+    assert care.sections[0].items[0].is_due_today is True
+    assert care.sections[0].items[0].last_watered_at is None
+    assert care.sections[0].items[0].next_watering_date is None
+    assert care.sections[0].items[0].plant.name == "未記録のポトス"
 
-    assert care.items[1].due_status == "due_today"
-    assert care.items[1].next_watering_date == FIXED_TODAY
+    assert care.sections[0].items[1].due_status == "due_today"
+    assert care.sections[0].items[1].next_watering_date == FIXED_TODAY
 
-    assert care.items[2].due_status == "overdue"
-    assert care.items[2].next_watering_date == date(2026, 5, 27)
+    assert care.sections[0].items[2].due_status == "overdue"
+    assert care.sections[0].items[2].next_watering_date == date(2026, 5, 27)
 
 
-def test_today_care_returns_empty_items_when_no_owned_plants_or_none_due(test_engine):
+def test_upcoming_care_returns_default_today_section_and_empty_items(test_engine):
     with Session(test_engine) as session:
         _create_user(session, "empty-owner")
         _create_plant(
@@ -80,13 +96,17 @@ def test_today_care_returns_empty_items_when_no_owned_plants_or_none_due(test_en
         )
         service = _service(session)
 
-        empty_owner_care = service.get_today_care("empty-owner")
-        none_due_care = service.get_today_care("owner-a")
+        empty_owner_care = service.get_upcoming_care("empty-owner")
+        none_due_care = service.get_upcoming_care("owner-a")
 
-    assert empty_owner_care.today == FIXED_TODAY
-    assert empty_owner_care.items == []
-    assert none_due_care.today == FIXED_TODAY
-    assert none_due_care.items == []
+    assert empty_owner_care.start_date == FIXED_TODAY
+    assert empty_owner_care.days == 1
+    assert [(section.date, section.kind, section.items) for section in empty_owner_care.sections] == [
+        (FIXED_TODAY, "today", []),
+    ]
+    assert none_due_care.start_date == FIXED_TODAY
+    assert none_due_care.days == 1
+    assert none_due_care.sections[0].items == []
 
 
 def test_get_plant_watering_calculates_next_date_from_current_cycle_and_history(
@@ -179,13 +199,13 @@ def test_record_watering_creates_record_updates_summary_and_refreshes_state(
         )
         service = _service(session, now_provider=lambda: now)
 
-        before = service.get_today_care("owner-a")
+        before = service.get_upcoming_care("owner-a")
         result = service.record_watering("owner-a", plant.id)
-        after = service.get_today_care("owner-a")
+        after = service.get_upcoming_care("owner-a")
         session.refresh(plant)
 
-    assert [item.plant_id for item in before.items] == [plant.id]
-    assert after.items == []
+    assert [item.plant_id for item in before.sections[0].items] == [plant.id]
+    assert after.sections[0].items == []
 
     assert result.record.plant_id == plant.id
     assert result.record.watered_at == now
