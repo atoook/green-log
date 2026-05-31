@@ -326,6 +326,7 @@ def test_plant_route_policy_only_exposes_owned_plant_endpoints():
     }
     watering_mvp_routes = {
         ("GET", "/care/today"),
+        ("GET", "/care/watering-heatmap"),
         ("GET", "/plants/{plant_id}/watering"),
         ("POST", "/plants/{plant_id}/watering-records"),
     }
@@ -349,10 +350,20 @@ def test_plant_route_policy_only_exposes_owned_plant_endpoints():
             "notification",
             "permission",
             "skip",
+            "defer",
             "growth",
             "photo",
             "share",
             "care-type",
+            "fertilizer",
+            "pruning",
+            "repotting",
+            "streak",
+            "ranking",
+            "calendar",
+            "weekly",
+            "monthly",
+            "summary",
             "recommend",
         )
     )
