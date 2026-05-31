@@ -1,3 +1,6 @@
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta, timezone
+
 from sqlmodel import Session, select
 
 from app.models.plant import Plant
@@ -5,6 +8,14 @@ from app.models.watering_record import WateringRecord
 
 
 DEFAULT_WATERING_HISTORY_LIMIT = 20
+
+
+@dataclass(frozen=True)
+class WateringHeatmapRecordRow:
+    watered_on: date
+    plant_id: int
+    plant_name: str
+    watered_at: datetime
 
 
 class WateringRepository:
@@ -43,9 +54,49 @@ class WateringRepository:
 
         return list(self.session.exec(statement).all())
 
+    def list_for_heatmap(
+        self,
+        owner_user_id: str,
+        start_date: date,
+        end_date: date,
+    ) -> list[WateringHeatmapRecordRow]:
+        start_at = datetime.combine(start_date, time.min, tzinfo=timezone.utc)
+        end_exclusive = datetime.combine(
+            end_date + timedelta(days=1),
+            time.min,
+            tzinfo=timezone.utc,
+        )
+        statement = (
+            select(WateringRecord, Plant.name)
+            .join(Plant, Plant.id == WateringRecord.plant_id)
+            .where(
+                WateringRecord.owner_user_id == owner_user_id,
+                Plant.owner_user_id == owner_user_id,
+                WateringRecord.watered_at >= start_at,
+                WateringRecord.watered_at < end_exclusive,
+            )
+            .order_by(WateringRecord.watered_at, WateringRecord.id)
+        )
+
+        return [
+            WateringHeatmapRecordRow(
+                watered_on=_as_utc(record.watered_at).date(),
+                plant_id=record.plant_id,
+                plant_name=plant_name,
+                watered_at=_as_utc(record.watered_at),
+            )
+            for record, plant_name in self.session.exec(statement).all()
+        ]
+
     def _plant_is_owned(self, owner_user_id: str, plant_id: int) -> bool:
         statement = select(Plant.id).where(
             Plant.id == plant_id,
             Plant.owner_user_id == owner_user_id,
         )
         return self.session.exec(statement).first() is not None
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
