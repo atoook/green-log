@@ -1,14 +1,14 @@
 # Design Document
 
 ## Overview
-Plant Registration は、ユーザー所有の鉢・個体として植物を登録し、一覧と詳細で見返せる基礎機能を提供する。既存実装では Plant API、owner scope、Vue Router、登録・一覧・詳細 UI が導入済みであり、今回の設計更新は植物一覧に「家に来てからXX日」を追加する表示改善を中心に扱う。
+Plant Registration は、ユーザー所有の鉢・個体として植物を登録し、一覧と詳細で見返せる基礎機能を提供する。既存実装では Plant API、owner scope、Vue Router、登録・一覧・詳細 UI が導入済みであり、今回の設計更新は植物一覧に「いっしょに暮らしてXX日目」を追加する表示改善を中心に扱う。
 
 Plant 基本情報の authoritative source は Backend の Plant read model である。Frontend は既存の `acquiredDate` を使って一覧上の経過日表示を計算し、日付未設定時は未記録として表示する。水やり履歴、次回水やり予定、画像アップロード、植物種マスタは引き続きこの spec の境界外に置く。
 
 ### Goals
 - 植物登録、一覧、詳細の既存 contract を維持する。
-- 植物一覧で `acquiredDate` から「家に来てからXX日」を表示する。
-- `acquiredDate` 未設定時に一覧を崩さず、家に来た日が未記録であることを表示する。
+- 植物一覧で `acquiredDate` から「いっしょに暮らしてXX日目」を表示する。
+- `acquiredDate` 未設定時に一覧を崩さず、お迎え日が未記録であることを表示する。
 - 表示改善を Plant 基本情報の範囲に閉じ、水やり計算や新規 API を追加しない。
 
 ### Non-Goals
@@ -108,7 +108,7 @@ frontend/
 ```
 
 ### Modified Files
-- `frontend/src/components/plants/PlantList.vue` — `acquiredDate` から「家に来てからXX日」を表示し、未設定時は未記録文言を表示する。
+- `frontend/src/components/plants/PlantList.vue` — `acquiredDate` から「いっしょに暮らしてXX日目」を表示し、未設定時は未記録文言を表示する。
 - `frontend/tests/plant-ui-state.test.mjs` または一覧表示系テスト — 経過日表示、同日表示、未設定表示を検証する。
 - `.kiro/specs/plant-registration/design.md` — requirements 更新に合わせた設計更新。
 - `.kiro/specs/plant-registration/research.md` — 既存実装と表示改善方針の記録。
@@ -255,8 +255,8 @@ export interface PlantsApiClient {
 
 **Responsibilities & Constraints**
 - `plants`, `isLoading`, `error` を props として受け取り、`select` と `retry` を emits で返す。
-- `acquiredDate` がある場合、今日との差分を calendar day 単位で計算して「家に来てからXX日」と表示する。
-- `acquiredDate` がない場合、「家に来た日は未記録」と表示する。
+- `acquiredDate` がある場合、今日との差分を calendar day 単位で計算して「いっしょに暮らしてXX日目」と表示する。
+- `acquiredDate` がない場合、「お迎え日は未記録」と表示する。
 - 同じ日の場合は `0日` として扱う。
 - date-only 文字列は `YYYY-MM-DD` として分解し、時刻や timezone offset の影響で日数がずれないようにする。
 - 計算関数は `today` を注入可能な純粋関数にして、UI テストで現在日付に依存しない検証を可能にする。
@@ -323,8 +323,8 @@ API JSON uses camelCase:
 - `PlantService.create_plant` rejects `wateringCycleDays < 1` for 2.7.
 - `PlantRepository.list` and `get_by_id` enforce owner scope for 3.1, 4.4, and adjacent auth expectations.
 - `PlantList` displays plant names for 3.2.
-- `PlantList` displays `家に来てから12日` when `acquiredDate` is 12 calendar days before injected today for 3.3.
-- `PlantList` displays `家に来てから0日` when `acquiredDate` equals injected today for 3.3.
+- `PlantList` displays `いっしょに暮らして12日目` when `acquiredDate` is 12 calendar days before injected today for 3.3.
+- `PlantList` displays `いっしょに暮らして0日目` when `acquiredDate` equals injected today for 3.3.
 - `PlantList` displays the unrecorded acquired-date message when `acquiredDate` is null for 3.4.
 - `PlantList` keeps image fallback behavior for 3.5 and 3.6.
 

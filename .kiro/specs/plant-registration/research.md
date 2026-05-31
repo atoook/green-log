@@ -5,13 +5,13 @@
 - **Discovery Scope**: Extension
 - **Key Findings**:
   - 既存実装は Plant API、owner scope、Frontend の Plant 型、一覧 component をすでに持つ。
-  - `acquiredDate` は Backend schema と Frontend type に存在するため、「家に来てからXX日」は API 追加なしで一覧表示に追加できる。
+  - `acquiredDate` は Backend schema と Frontend type に存在するため、「いっしょに暮らしてXX日目」は API 追加なしで一覧表示に追加できる。
   - 経過日表示は Plant 基本情報の presentation concern であり、水やり予定計算や `/care` 系 API とは分離する。
 
 ## Research Log
 
 ### 既存 Plant contract
-- **Context**: requirements に「家に来てからXX日」が追加されたため、既存 API と型で実現できるか確認した。
+- **Context**: requirements に「いっしょに暮らしてXX日目」が追加されたため、既存 API と型で実現できるか確認した。
 - **Sources Consulted**: `backend/app/schemas/plant.py`, `backend/app/models/plant.py`, `frontend/src/types/plant.ts`, `frontend/src/api/plants.ts`
 - **Findings**:
   - `PlantCreate` と `PlantRead` は `acquired_date: date | None` を持ち、camelCase では `acquiredDate` として扱われる。
@@ -30,7 +30,7 @@
   - 画像読み込み失敗は component-local `brokenImageIds` で扱われている。
 - **Implications**:
   - 経過日表示は `PlantList` の派生ラベルとして追加する。
-  - `acquiredDate` 未設定時は「家に来た日は未記録」と表示し、既存の一覧 item selection と画像 fallback を維持する。
+  - `acquiredDate` 未設定時は「お迎え日は未記録」と表示し、既存の一覧 item selection と画像 fallback を維持する。
   - 日付計算は現在日に依存するため、テストでは today を注入できる純粋関数として切り出す。
 
 ### Owner scope と境界
@@ -59,7 +59,7 @@
 - **Alternatives Considered**:
   1. Backend に computed field を追加する。
   2. Frontend で `acquiredDate` から表示用 label を作る。
-- **Selected Approach**: `PlantList` が date-only 文字列から「家に来てからXX日」を派生表示する。
+- **Selected Approach**: `PlantList` が date-only 文字列から「いっしょに暮らしてXX日目」を派生表示する。
 - **Rationale**: 既存 API contract を壊さず、小さな表示改善として実装できる。
 - **Trade-offs**: Frontend test で today を固定する必要がある。
 - **Follow-up**: 日付基準をアプリ全体で統一する必要が出た場合、共有 date utility への昇格を検討する。
@@ -69,7 +69,7 @@
 - **Alternatives Considered**:
   1. `createdAt` を fallback として使う。
   2. `acquiredDate` が null の場合は未記録として表示する。
-- **Selected Approach**: `acquiredDate` が null の場合、「家に来た日は未記録」と表示する。
+- **Selected Approach**: `acquiredDate` が null の場合、「お迎え日は未記録」と表示する。
 - **Rationale**: 「家に来た日」と「記録作成日」を混同せず、ユーザーに意味のある状態を示せる。
 - **Trade-offs**: 未設定の植物では日数が出ない。
 - **Follow-up**: Plant 編集機能が追加された時点で、未記録状態から家に来た日を追記する導線を検討する。

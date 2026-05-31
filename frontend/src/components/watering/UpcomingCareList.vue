@@ -28,17 +28,17 @@ function careErrorMessage(error: ApiError): string {
     case 'auth':
       return 'ログインの有効期限が切れました。もう一度ログインしてください。'
     case 'forbidden':
-      return '今日のお世話を表示できません。ログイン中のアカウントを確認してください。'
+      return '直近のお世話予定を表示できません。ログイン中のアカウントを確認してください。'
     case 'network':
       return '接続できませんでした。通信環境を確認してからもう一度お試しください。'
     case 'server':
-      return '今日のお世話を読み込めませんでした。時間をおいてもう一度お試しください。'
+      return '直近のお世話予定を読み込めませんでした。時間をおいてもう一度お試しください。'
     case 'not_found':
-      return '今日のお世話が見つかりませんでした。'
+      return '直近のお世話予定が見つかりませんでした。'
     case 'validation':
       return '表示する内容を確認できませんでした。'
     default:
-      return '今日のお世話を表示できませんでした。時間をおいてもう一度お試しください。'
+      return '直近のお世話予定を表示できませんでした。時間をおいてもう一度お試しください。'
   }
 }
 

@@ -33,6 +33,8 @@ test('UpcomingCareList renders loading, error, empty, and recording failure stat
   assert.match(source, /今日のお世話/)
   assert.match(source, /明日のお世話/)
   assert.match(source, /明後日のお世話/)
+  assert.match(source, /直近のお世話予定を表示できません/)
+  assert.match(source, /直近のお世話予定を読み込めません/)
   assert.match(source, /読み込んでいます/)
   assert.match(source, /この日に必要な水やりはありません/)
   assert.match(source, /植物を登録/)
