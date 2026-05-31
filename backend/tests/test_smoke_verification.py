@@ -27,14 +27,27 @@ def make_test_engine():
 def test_verify_plant_crud_uses_application_user_upsert(monkeypatch):
     engine = make_test_engine()
     observed_clerk_user_ids: list[str] = []
+    observed_heatmap_reads: list[tuple[str, str, str]] = []
 
     class SpyUserService(UserService):
         def get_or_create_from_clerk(self, profile: UserProfileInput) -> User:
             observed_clerk_user_ids.append(profile.clerk_user_id)
             return super().get_or_create_from_clerk(profile)
 
+    class SpyWateringService(verify_turso_crud.WateringService):
+        def get_watering_heatmap(self, owner_user_id, start_date=None, end_date=None):
+            observed_heatmap_reads.append(
+                (
+                    owner_user_id,
+                    start_date.isoformat() if start_date else "",
+                    end_date.isoformat() if end_date else "",
+                )
+            )
+            return super().get_watering_heatmap(owner_user_id, start_date, end_date)
+
     monkeypatch.setattr(verify_turso_crud, "create_database_engine", lambda settings: engine)
     monkeypatch.setattr(verify_turso_crud, "UserService", SpyUserService)
+    monkeypatch.setattr(verify_turso_crud, "WateringService", SpyWateringService)
 
     result = verify_turso_crud.verify_plant_crud(Settings(database_url="sqlite://"))
 
@@ -43,22 +56,43 @@ def test_verify_plant_crud_uses_application_user_upsert(monkeypatch):
         plants = list(session.exec(select(Plant)).all())
         watering_records = list(session.exec(select(WateringRecord)).all())
 
+    smoke_users = [user for user in users if user.clerk_user_id.startswith("smoke-clerk-")]
+    other_users = [
+        user for user in users if user.clerk_user_id.startswith("smoke-other-clerk-")
+    ]
+
     assert result.created_plant_id >= 1
     assert result.created_watering_record_id >= 1
     assert len(observed_clerk_user_ids) == 3
     assert observed_clerk_user_ids[0] == observed_clerk_user_ids[1]
     assert observed_clerk_user_ids[2].startswith("smoke-other-clerk-")
     assert len(users) == 2
-    smoke_users = [user for user in users if user.clerk_user_id.startswith("smoke-clerk-")]
     assert len(smoke_users) == 1
-    assert len(plants) == 1
-    assert plants[0].owner_user_id == smoke_users[0].id
-    assert plants[0].owner_user_id != smoke_users[0].clerk_user_id
-    assert len(watering_records) == 1
-    assert watering_records[0].id == result.created_watering_record_id
-    assert watering_records[0].owner_user_id == smoke_users[0].id
-    assert watering_records[0].plant_id == plants[0].id
-    assert plants[0].last_watered_at == watering_records[0].watered_at
+    assert len(other_users) == 1
+    smoke_plants = [plant for plant in plants if plant.owner_user_id == smoke_users[0].id]
+    other_plants = [plant for plant in plants if plant.owner_user_id == other_users[0].id]
+    assert len(smoke_plants) == 1
+    assert len(other_plants) == 1
+    assert smoke_plants[0].owner_user_id != smoke_users[0].clerk_user_id
+    smoke_records = [
+        record for record in watering_records if record.owner_user_id == smoke_users[0].id
+    ]
+    other_records = [
+        record for record in watering_records if record.owner_user_id == other_users[0].id
+    ]
+    assert len(smoke_records) == 1
+    assert len(other_records) == 1
+    assert smoke_records[0].id == result.created_watering_record_id
+    assert smoke_records[0].plant_id == smoke_plants[0].id
+    assert other_records[0].watered_at.date() == smoke_records[0].watered_at.date()
+    assert smoke_plants[0].last_watered_at == smoke_records[0].watered_at
+    assert observed_heatmap_reads == [
+        (
+            smoke_users[0].id,
+            smoke_records[0].watered_at.date().isoformat(),
+            smoke_records[0].watered_at.date().isoformat(),
+        )
+    ]
 
 
 def test_assert_no_ownerless_plants_raises_when_rows_are_ownerless():

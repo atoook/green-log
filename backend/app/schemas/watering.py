@@ -8,6 +8,7 @@ from app.schemas.plant import alias_config
 
 
 DueStatus = Literal["unrecorded", "due_today", "overdue"]
+WateringHeatmapLevel = Literal[0, 1, 2, 3, 4]
 
 
 def serialize_utc_datetime(value: datetime) -> str:
@@ -68,3 +69,21 @@ class PlantWateringDetailRead(PlantWateringStateRead):
 class WateringRecordCreateResult(WateringSchema):
     record: WateringRecordRead
     state: PlantWateringDetailRead
+
+
+class WateringHeatmapPlantRead(WateringSchema):
+    plant_id: int
+    name: str
+
+
+class WateringHeatmapDayRead(WateringSchema):
+    date: date
+    plant_count: int
+    level: WateringHeatmapLevel
+    plants: list[WateringHeatmapPlantRead]
+
+
+class WateringHeatmapRead(WateringSchema):
+    start_date: date
+    end_date: date
+    days: list[WateringHeatmapDayRead]

@@ -13,13 +13,18 @@ from sqlmodel import Session
 
 from app.core.config import Settings
 from app.db.engine import create_database_engine
+from app.models.plant import Plant
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.watering_repository import WateringRepository
 from app.schemas.plant import PlantCreate
 from app.services.plant_service import PlantService
 from app.services.user_service import UserProfileInput, UserService
-from app.services.watering_service import WateringPlantNotFoundError, WateringService
+from app.services.watering_service import (
+    APP_TIMEZONE,
+    WateringPlantNotFoundError,
+    WateringService,
+)
 
 
 @dataclass(frozen=True)
@@ -88,6 +93,16 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
                 watering_cycle_days=7,
             )
         )
+        other_created = service.create_plant(
+            other_user.id,
+            PlantCreate(
+                name=f"{smoke_name}_other_owner",
+                acquired_date=None,
+                memo="smoke verification other owner",
+                image_url=None,
+                watering_cycle_days=7,
+            ),
+        )
         plants = service.list_plants(smoke_user.id)
         detail = service.get_plant(smoke_user.id, created.id)
         watering_service = WateringService(
@@ -123,8 +138,27 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
             created.id,
             watered_at=watered_at,
         )
+        watering_service.record_watering(
+            other_user.id,
+            other_created.id,
+            watered_at=watered_at,
+        )
+        current_smoke_name = f"{smoke_name}_current"
+        smoke_plant = session.get(Plant, created.id)
+        if smoke_plant is None:
+            raise RuntimeError("Created smoke plant disappeared before heatmap verification")
+        smoke_plant.name = current_smoke_name
+        session.add(smoke_plant)
+        session.commit()
+
         watering_detail = watering_service.get_plant_watering(smoke_user.id, created.id)
         today_care_after_record = watering_service.get_today_care(smoke_user.id)
+        watered_on = watered_at.astimezone(APP_TIMEZONE).date()
+        heatmap = watering_service.get_watering_heatmap(
+            smoke_user.id,
+            start_date=watered_on,
+            end_date=watered_on,
+        )
 
     if created.id < 1:
         raise RuntimeError("Plant create did not return a generated id")
@@ -138,7 +172,9 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
         raise RuntimeError("Watering record was not linked to the created plant")
     if watering_result.record.watered_at != watering_result.state.last_watered_at:
         raise RuntimeError("Latest watering state did not match the created record")
-    expected_next_watering_date = watering_result.record.watered_at.date() + timedelta(days=7)
+    expected_next_watering_date = (
+        watering_result.record.watered_at.astimezone(APP_TIMEZONE).date() + timedelta(days=7)
+    )
     if watering_result.state.next_watering_date != expected_next_watering_date:
         raise RuntimeError("Next watering date did not match the plant watering cycle")
     if not watering_detail.history:
@@ -147,6 +183,20 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
         raise RuntimeError("Watering history did not return the newest created record first")
     if any(item.plant_id == created.id for item in today_care_after_record.items):
         raise RuntimeError("Freshly watered smoke plant was still listed in today's care")
+    if heatmap.start_date != watered_on or heatmap.end_date != watered_on:
+        raise RuntimeError("Watering heatmap did not use the requested smoke record date")
+    if len(heatmap.days) != 1:
+        raise RuntimeError("Watering heatmap did not return exactly the requested smoke date")
+    heatmap_day = heatmap.days[0]
+    if heatmap_day.date != watered_on:
+        raise RuntimeError("Watering heatmap day did not match the smoke record date")
+    if heatmap_day.plant_count != 1:
+        raise RuntimeError("Watering heatmap mixed in ownerless or other-owner records")
+    if heatmap_day.level != 1:
+        raise RuntimeError("Watering heatmap level did not match one watered plant")
+    heatmap_plants = [(plant.plant_id, plant.name) for plant in heatmap_day.plants]
+    if heatmap_plants != [(created.id, current_smoke_name)]:
+        raise RuntimeError("Watering heatmap did not expose the current smoke plant name")
 
     assert_no_ownerless_plants(engine)
     assert_no_ownerless_watering_records(engine)
