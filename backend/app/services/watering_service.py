@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from app.models import Plant, WateringRecord
 from app.repositories.plant_repository import PlantRepository
@@ -20,6 +21,7 @@ from app.schemas.watering import (
 
 DEFAULT_HEATMAP_LOOKBACK_DAYS = 90
 MAX_HEATMAP_RANGE_DAYS = 366
+APP_TIMEZONE = ZoneInfo("Asia/Tokyo")
 
 
 class WateringPlantNotFoundError(LookupError):
@@ -30,8 +32,8 @@ class WateringHeatmapRangeError(ValueError):
     pass
 
 
-def utc_today() -> date:
-    return datetime.now(timezone.utc).date()
+def app_today() -> date:
+    return datetime.now(APP_TIMEZONE).date()
 
 
 def utc_now() -> datetime:
@@ -43,7 +45,7 @@ class WateringService:
         self,
         plant_repository: PlantRepository,
         watering_repository: WateringRepository,
-        today_provider: Callable[[], date] = utc_today,
+        today_provider: Callable[[], date] = app_today,
         now_provider: Callable[[], datetime] = utc_now,
     ) -> None:
         self.plant_repository = plant_repository
@@ -75,12 +77,17 @@ class WateringService:
             for current_date in _date_range(start_date, end_date)
         }
 
+        start_at, end_exclusive = _app_date_range_to_utc(start_date, end_date)
+
         for row in self.watering_repository.list_for_heatmap(
             owner_user_id,
-            start_date,
-            end_date,
+            start_at,
+            end_exclusive,
         ):
-            day_plants = plants_by_date[row.watered_on]
+            watered_on = _app_date(row.watered_at)
+            if watered_on not in plants_by_date:
+                continue
+            day_plants = plants_by_date[watered_on]
             if row.plant_id not in day_plants:
                 day_plants[row.plant_id] = WateringHeatmapPlantRead(
                     plant_id=row.plant_id,
@@ -221,7 +228,7 @@ class WateringService:
             due_status = "unrecorded"
             is_due_today = True
         else:
-            next_watering_date = last_watered_at.date() + timedelta(
+            next_watering_date = _app_date(last_watered_at) + timedelta(
                 days=plant.watering_cycle_days,
             )
             if next_watering_date < today:
@@ -258,6 +265,20 @@ def _as_utc(value: datetime | None) -> datetime | None:
 
 def _as_utc_datetime(value: datetime) -> datetime:
     return _as_utc(value) or value
+
+
+def _app_date(value: datetime) -> date:
+    return _as_utc_datetime(value).astimezone(APP_TIMEZONE).date()
+
+
+def _app_date_range_to_utc(start_date: date, end_date: date) -> tuple[datetime, datetime]:
+    start_at = datetime.combine(start_date, datetime.min.time(), tzinfo=APP_TIMEZONE)
+    end_exclusive = datetime.combine(
+        end_date + timedelta(days=1),
+        datetime.min.time(),
+        tzinfo=APP_TIMEZONE,
+    )
+    return start_at.astimezone(timezone.utc), end_exclusive.astimezone(timezone.utc)
 
 
 def _date_range(start_date: date, end_date: date) -> list[date]:

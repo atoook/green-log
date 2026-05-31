@@ -57,6 +57,6 @@ MVP の最小ユーザーフローは次の通り。
 ## Constraints
 Markdown と spec 成果物は `spec.json.language` に合わせて日本語で記述する。Backend は FastAPI / SQLModel / Alembic の layered architecture に従い、Service は FastAPI の HTTP 例外に依存しない。Frontend は Vue 3 / TypeScript の typed API client と composable 境界を守る。
 
-日時は API 表現では UTC ISO 文字列を基本にする。水やり予定は日単位の体験なので、MVP では `last_watered_at` の date と `watering_cycle_days` から `next_watering_date` を算出する。将来の通知ではユーザーのタイムゾーン、通知時刻、重複通知防止、周期変更時の再計算を別途設計する。
+日時は API 表現では UTC ISO 文字列を基本にする。水やり予定は日単位の体験なので、MVP では `last_watered_at` を Asia/Tokyo の日付へ換算し、`watering_cycle_days` から `next_watering_date` を算出する。将来の通知ではユーザーのタイムゾーン、通知時刻、重複通知防止、周期変更時の再計算を別途設計する。
 
 Today's Todo は MVP ではユーザーごとの植物数が少ない前提で、owner scope の植物と `last_watered_at` summary を使って service 層で判定する。将来、全ユーザー向け通知 scan や大量データで性能要件が出た場合は、`next_watering_date` を保存する schedule state と `(owner_user_id, next_watering_date)` index を追加する。

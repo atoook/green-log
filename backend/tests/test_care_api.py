@@ -12,11 +12,11 @@ from app.repositories.plant_repository import PlantRepository
 from app.repositories.watering_repository import WateringRepository
 from app.routers.care import get_watering_service, router
 from app.schemas.watering import TodayCareRead, WateringHeatmapRead
-from app.services.watering_service import WateringService
+from app.services.watering_service import APP_TIMEZONE, WateringService
 
 
 def test_today_care_route_returns_only_owned_due_plants(test_engine):
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(APP_TIMEZONE).date()
     yesterday = today - timedelta(days=1)
     one_week_ago = today - timedelta(days=7)
     ten_days_ago = today - timedelta(days=10)
@@ -80,7 +80,7 @@ def test_today_care_route_returns_empty_items_and_today(test_engine):
 
     assert response.status_code == 200
     assert response.json() == {
-        "today": datetime.now(timezone.utc).date().isoformat(),
+        "today": datetime.now(APP_TIMEZONE).date().isoformat(),
         "items": [],
     }
 
@@ -135,7 +135,7 @@ def test_watering_heatmap_route_returns_owned_records_for_requested_range(test_e
         pothos_id = pothos.id
 
         _create_watering_record(session, "owner-a", monstera_id, watered_on, hour=8)
-        _create_watering_record(session, "owner-a", monstera_id, watered_on, hour=20)
+        _create_watering_record(session, "owner-a", monstera_id, watered_on, hour=10)
         _create_watering_record(session, "owner-a", pothos_id, watered_on, hour=9)
         _create_watering_record(session, "owner-b", other_owner_plant.id, watered_on)
         _create_watering_record(

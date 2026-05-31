@@ -108,6 +108,17 @@ test('createDefaultWateringHeatmapRange builds the inclusive recent 90-day lookb
   })
 })
 
+test('createDefaultWateringHeatmapRange uses the JST app date instead of the browser local date', async () => {
+  const { module } = await loadWateringHeatmapComposableModule()
+
+  const range = module.createDefaultWateringHeatmapRange(new Date('2026-05-30T15:30:00.000Z'))
+
+  assert.deepEqual(range, {
+    from: '2026-03-02',
+    to: '2026-05-31',
+  })
+})
+
 test('useWateringHeatmap loads the default range and exposes success state', async () => {
   const { module } = await loadWateringHeatmapComposableModule()
   const calls = []
@@ -300,6 +311,7 @@ test('useWateringHeatmap composes the authenticated watering client and stays wi
   assert.doesNotMatch(source, /\bfetch\s*\(/)
   assert.doesNotMatch(source, /\buseAuth\s*\(/)
   assert.doesNotMatch(source, /Notification|permission|skip|defer|background|ranking|streak/i)
+  assert.match(source, /Asia\/Tokyo/)
   assert.match(source, /useAuthenticatedApi/)
   assert.match(source, /createWateringApiClient/)
   assert.doesNotMatch(source, /(?<![A-Za-z0-9_$])any(?![A-Za-z0-9_$])/)

@@ -216,7 +216,7 @@ def test_record_watering_uses_explicit_watered_at_when_provided(test_engine):
 
     assert result.record.watered_at == explicit_watered_at
     assert result.state.last_watered_at == explicit_watered_at
-    assert result.state.next_watering_date == date(2026, 6, 5)
+    assert result.state.next_watering_date == date(2026, 6, 6)
     assert plant.last_watered_at is not None
     assert _as_utc(plant.last_watered_at) == explicit_watered_at
 
@@ -279,7 +279,7 @@ def test_get_watering_heatmap_fills_inclusive_range_and_distinct_plants(test_eng
             session,
             "owner-a",
             pothos.id,
-            datetime(2026, 5, 28, 18, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 28, 10, 0, tzinfo=timezone.utc),
         )
         _add_record(
             session,
@@ -322,6 +322,40 @@ def test_get_watering_heatmap_fills_inclusive_range_and_distinct_plants(test_eng
     assert heatmap.days[2].plant_count == 0
     assert heatmap.days[2].level == 0
     assert heatmap.days[2].plants == []
+
+
+def test_get_watering_heatmap_groups_records_by_jst_date(test_engine):
+    with Session(test_engine) as session:
+        plant = _create_plant(session, "owner-a", "夜のポトス")
+        included_record = _add_record(
+            session,
+            "owner-a",
+            plant.id,
+            datetime(2026, 5, 30, 15, 30, tzinfo=timezone.utc),
+        )
+        _add_record(
+            session,
+            "owner-a",
+            plant.id,
+            datetime(2026, 5, 31, 14, 59, tzinfo=timezone.utc),
+        )
+        _add_record(
+            session,
+            "owner-a",
+            plant.id,
+            datetime(2026, 5, 31, 15, 0, tzinfo=timezone.utc),
+        )
+
+        heatmap = _service(session).get_watering_heatmap(
+            "owner-a",
+            start_date=date(2026, 5, 31),
+            end_date=date(2026, 5, 31),
+        )
+
+    assert included_record.watered_at.date() == date(2026, 5, 30)
+    assert heatmap.days[0].date == date(2026, 5, 31)
+    assert heatmap.days[0].plant_count == 1
+    assert heatmap.days[0].plants[0].name == "夜のポトス"
 
 
 def test_get_watering_heatmap_caps_level_at_four(test_engine):

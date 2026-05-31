@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, timezone
 
 from sqlmodel import Session, select
 
@@ -57,15 +57,9 @@ class WateringRepository:
     def list_for_heatmap(
         self,
         owner_user_id: str,
-        start_date: date,
-        end_date: date,
+        start_at: datetime,
+        end_exclusive: datetime,
     ) -> list[WateringHeatmapRecordRow]:
-        start_at = datetime.combine(start_date, time.min, tzinfo=timezone.utc)
-        end_exclusive = datetime.combine(
-            end_date + timedelta(days=1),
-            time.min,
-            tzinfo=timezone.utc,
-        )
         statement = (
             select(WateringRecord, Plant.name)
             .join(Plant, Plant.id == WateringRecord.plant_id)

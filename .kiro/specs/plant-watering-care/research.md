@@ -43,7 +43,7 @@
   - ヒートマップの価値は「何回押したか」より「どの植物をお世話したか」にある。
   - 現在の Plant 名を join して返せば、記録時点名を保存する追加 migration は不要である。
 - **Implications**:
-  - ヒートマップでは同一 UTC 日・同一 plant の複数 record を 1 植物として集計する。
+  - ヒートマップでは同一 Asia/Tokyo 日・同一 plant の複数 record を 1 植物として集計する。
   - 詳細表示は `date` と現在の `plant.name` list を返す。
   - 記録時点名の保持は将来要件が出るまで追加しない。
 
@@ -125,7 +125,7 @@
 
 - 同日同一植物の重複 record がヒートマップを過大評価する — Service で date + plant_id の distinct 集計を行う。
 - ヒートマップで多数の植物名が並ぶ — UI は判別可能な形を維持し、詳細な省略ルールは component 実装で固定する。
-- UTC 日付とユーザーの生活日付がずれる — MVP は既存設計通り UTC date を使い、timezone profile 追加時に revalidation する。
+- UTC 日付とユーザーの生活日付がずれる — MVP は Asia/Tokyo date を使い、timezone profile 追加時に revalidation する。
 - ヒートマップ取得失敗でホーム全体が壊れる — `WateringHeatmap` 部分に局所 error と retry を表示する。
 - 将来 analytics が増えて WateringService が肥大化する — streak/週次/月次/植物別切り替えが入る時点で analytics boundary を再検討する。
 

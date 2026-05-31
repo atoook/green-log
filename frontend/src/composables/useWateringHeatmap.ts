@@ -5,6 +5,7 @@ import type { WateringHeatmap, WateringHeatmapDay, WateringHeatmapRange } from '
 import { useAuthenticatedApi } from './useAuthenticatedApi'
 
 const DEFAULT_HEATMAP_LOOKBACK_DAYS = 90
+const APP_TIME_ZONE = 'Asia/Tokyo'
 
 interface UseWateringHeatmapOptions {
   wateringApiClient?: WateringApiClient
@@ -16,23 +17,36 @@ function shouldClearHeatmapOnError(error: ApiError): boolean {
   return error.type === 'auth' || error.type === 'forbidden'
 }
 
-function formatLocalDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+function getAppDateParts(date: Date): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+  }
 }
 
-function shiftLocalDate(date: Date, days: number): Date {
-  const shifted = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  shifted.setDate(shifted.getDate() + days)
-  return shifted
+function formatAppDate(date: Date): string {
+  const { year, month, day } = getAppDateParts(date)
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+function shiftAppDate(date: Date, days: number): Date {
+  const { year, month, day } = getAppDateParts(date)
+  return new Date(Date.UTC(year, month - 1, day + days))
 }
 
 export function createDefaultWateringHeatmapRange(today: Date = new Date()): WateringHeatmapRange {
   return {
-    from: formatLocalDate(shiftLocalDate(today, -DEFAULT_HEATMAP_LOOKBACK_DAYS)),
-    to: formatLocalDate(today),
+    from: formatAppDate(shiftAppDate(today, -DEFAULT_HEATMAP_LOOKBACK_DAYS)),
+    to: formatAppDate(today),
   }
 }
 

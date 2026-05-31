@@ -23,7 +23,7 @@ Plant Watering Care は、登録済み植物の水やり記録、最新水やり
 - 植物種ごとの推奨周期や育成レコメンド。
 - 過去の水やり記録の編集・削除。
 - 植物別ヒートマップ切り替え、連続記録日数、ランキング、週次または月次の習慣化サマリー。
-- user timezone profile や timezone-aware schedule。
+- user timezone profile やユーザー別 timezone-aware schedule。MVP の日付基準は Asia/Tokyo 固定とする。
 
 ## Boundary Commitments
 
@@ -234,7 +234,7 @@ flowchart TB
     Due -->|No| Skip[Exclude todo item]
 ```
 
-MVP の `today` は backend UTC date を基準にする。user timezone profile が追加される場合、この flow は revalidation する。
+MVP の `today` は backend で Asia/Tokyo date を基準にする。user timezone profile が追加される場合、この flow は revalidation する。
 
 ### 水やりヒートマップ取得
 
@@ -249,7 +249,7 @@ flowchart TB
     Render --> Detail[Show date and plant names]
 ```
 
-同じ植物に同じ UTC 日で複数の WateringRecord がある場合、ヒートマップでは 1 植物として集計する。詳細表示の植物名は現在の Plant 登録名を使う。
+同じ植物に同じ Asia/Tokyo 日で複数の WateringRecord がある場合、ヒートマップでは 1 植物として集計する。詳細表示の植物名は現在の Plant 登録名を使う。
 
 ## Requirements Traceability
 
@@ -274,7 +274,7 @@ flowchart TB
 | 4.2 | 予定日未確定と記録導線 | `WateringStatusPanel`, `WateringActionButton` | `nextWateringDate: null` | 今日のお世話判定 |
 | 4.3 | 記録後の予定日更新 | `WateringService`, `usePlantWatering` | `WateringRecordCreateResult.state` | 水やり記録作成 |
 | 4.4 | 予定日はユーザー入力不要 | `WateringService` | read model only | 今日のお世話判定 |
-| 4.5 | 日単位の予定基準 | `WateringService` | UTC date calculation | 今日のお世話判定 |
+| 4.5 | 日単位の予定基準 | `WateringService` | Asia/Tokyo date calculation | 今日のお世話判定 |
 | 5.1 | 詳細で履歴表示 | `WateringHistoryList`, `usePlantWatering` | `PlantWateringDetailRead.history` | 水やり記録作成 |
 | 5.2 | 各記録の日付または日時表示 | `WateringHistoryList` | `WateringRecordRead.wateredAt` | 水やり記録作成 |
 | 5.3 | 履歴なし表示 | `WateringHistoryList` | `history: []` | 水やり記録作成 |
@@ -350,8 +350,8 @@ flowchart TB
 - record 作成時は owner scoped Plant lookup を先に行う。
 - WateringRecord 作成と Plant `last_watered_at` 更新を同一 transaction で完了する。
 - `next_watering_date` とヒートマップは保存せず、read model 内で計算する。
-- MVP の今日判定とヒートマップの日付境界は backend UTC date を使用する。
-- 同一 UTC 日の同一 plant の複数 record は、ヒートマップでは 1 植物として扱う。
+- MVP の今日判定とヒートマップの日付境界は backend Asia/Tokyo date を使用する。
+- 同一 Asia/Tokyo 日の同一 plant の複数 record は、ヒートマップでは 1 植物として扱う。
 - Service は FastAPI に依存しない。
 
 **Dependencies**
@@ -417,7 +417,7 @@ class WateringRepository:
 ```
 
 - Preconditions:
-  - `start_date` と `end_date` は inclusive な UTC date。
+  - `start_date` と `end_date` は inclusive な Asia/Tokyo date。
 - Postconditions:
   - `list_for_heatmap` は owner_user_id で絞り込み、他 owner の Plant 名を返さない。
 - Invariants:

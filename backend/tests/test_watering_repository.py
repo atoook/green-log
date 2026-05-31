@@ -189,8 +189,8 @@ def test_list_for_heatmap_returns_owned_records_in_inclusive_date_range_with_cur
 
         rows = repository.list_for_heatmap(
             "owner-a",
-            date(2026, 5, 31),
-            date(2026, 5, 31),
+            datetime(2026, 5, 31, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc),
         )
 
     assert [(row.watered_on, row.plant_id, row.plant_name) for row in rows] == [
@@ -225,8 +225,8 @@ def test_list_for_heatmap_represents_same_day_same_plant_duplicates_for_service_
 
         rows = repository.list_for_heatmap(
             "owner-a",
-            date(2026, 5, 31),
-            date(2026, 5, 31),
+            datetime(2026, 5, 31, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc),
         )
 
     assert [(row.watered_on, row.plant_id, row.plant_name) for row in rows] == [
