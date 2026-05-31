@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onActivated, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import PlantForm from '../components/plants/PlantForm.vue'
 import PlantList from '../components/plants/PlantList.vue'
@@ -24,8 +24,16 @@ const {
 
 const serverError = computed(() => (error.value?.type === 'validation' ? error.value.message : null))
 
+async function refreshHeatmap(): Promise<void> {
+  await loadHeatmap()
+}
+
 onMounted(() => {
-  void loadHeatmap()
+  void refreshHeatmap()
+})
+
+onActivated(() => {
+  void refreshHeatmap()
 })
 
 async function submitPlant(input: PlantCreateInput): Promise<void> {

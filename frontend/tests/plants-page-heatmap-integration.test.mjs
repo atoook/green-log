@@ -28,7 +28,7 @@ test('PlantsPage composes the watering heatmap without replacing plant form or l
     source,
     /const\s+\{[\s\S]*heatmap[\s\S]*isLoading:\s*isLoadingHeatmap[\s\S]*error:\s*heatmapError[\s\S]*selectedDate[\s\S]*selectedDay[\s\S]*loadHeatmap[\s\S]*retry:\s*retryHeatmap[\s\S]*setSelectedDate[\s\S]*clearSelectedDate[\s\S]*\}\s*=\s*useWateringHeatmap\(\{\s*autoLoad:\s*false\s*\}\)/,
   )
-  assert.match(source, /onMounted\(\(\)\s*=>\s*\{[\s\S]*void\s+loadHeatmap\(\)[\s\S]*\}\)/)
+  assert.match(source, /onMounted\(\(\)\s*=>\s*\{[\s\S]*void\s+refreshHeatmap\(\)[\s\S]*\}\)/)
   assert.match(
     source,
     /<WateringHeatmap[\s\S]*:heatmap=["']heatmap["'][\s\S]*:is-loading=["']isLoadingHeatmap["'][\s\S]*:error=["']heatmapError["'][\s\S]*:selected-date=["']selectedDate["'][\s\S]*:selected-day=["']selectedDay["'][\s\S]*@select-date=["']setSelectedDate["'][\s\S]*@clear-selection=["']clearSelectedDate["'][\s\S]*@retry=["']retryHeatmap["']/,
@@ -66,4 +66,22 @@ test('PlantsPage layout shows the recent heatmap alongside the existing home con
   assert.match(source, /<div\s+class=["']grid gap-4 md:grid-cols-\[360px_1fr\]["']/)
   assert.doesNotMatch(source, /hidden\s+md:block|md:hidden/)
   assert.doesNotMatch(source, outOfScopeHeatmapControls)
+})
+
+test('PlantsPage refreshes the heatmap when home is displayed again after watering elsewhere', async () => {
+  const source = await readSource('src/pages/PlantsPage.vue')
+
+  assert.match(source, /import\s+\{\s*computed,\s*onActivated,\s*onMounted\s*\}\s+from\s+['"]vue['"]/)
+  assert.match(
+    source,
+    /function\s+refreshHeatmap\(\):\s*Promise<void>\s*\{[\s\S]*await\s+loadHeatmap\(\)[\s\S]*\}/,
+  )
+  assert.match(source, /onMounted\(\(\)\s*=>\s*\{[\s\S]*void\s+refreshHeatmap\(\)[\s\S]*\}\)/)
+  assert.match(source, /onActivated\(\(\)\s*=>\s*\{[\s\S]*void\s+refreshHeatmap\(\)[\s\S]*\}\)/)
+  assert.match(
+    source,
+    /<WateringHeatmap[\s\S]*@retry=["']retryHeatmap["'][\s\S]*\/>/,
+    'retry must stay wired so users can recover the newest heatmap after a fetch failure',
+  )
+  assert.doesNotMatch(source, /\bmitt\b|EventBus|eventBus|provide\s*\(|inject\s*\(/)
 })
