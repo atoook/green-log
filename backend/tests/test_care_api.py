@@ -1,15 +1,18 @@
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from app.auth.dependencies import get_current_user
 from app.auth.types import CurrentUser
 from app.db.session import get_session
-from app.models import Plant, User
+from app.models import Plant, User, WateringRecord
+from app.repositories.plant_repository import PlantRepository
+from app.repositories.watering_repository import WateringRepository
 from app.routers.care import get_watering_service, router
-from app.schemas.watering import TodayCareRead
+from app.schemas.watering import TodayCareRead, WateringHeatmapRead
+from app.services.watering_service import WateringService
 
 
 def test_today_care_route_returns_only_owned_due_plants(test_engine):
@@ -119,6 +122,211 @@ def test_today_care_route_uses_internal_current_user_id(test_engine):
     assert calls == ["internal-user-id"]
 
 
+def test_watering_heatmap_route_returns_owned_records_for_requested_range(test_engine):
+    watered_on = date(2026, 5, 28)
+    empty_day = date(2026, 5, 29)
+    range_end = date(2026, 5, 30)
+
+    with Session(test_engine) as session:
+        monstera = _create_plant(session, "owner-a", "古いモンステラ名")
+        pothos = _create_plant(session, "owner-a", "ポトス")
+        other_owner_plant = _create_plant(session, "owner-b", "Bのフィカス")
+        monstera_id = monstera.id
+        pothos_id = pothos.id
+
+        _create_watering_record(session, "owner-a", monstera_id, watered_on, hour=8)
+        _create_watering_record(session, "owner-a", monstera_id, watered_on, hour=20)
+        _create_watering_record(session, "owner-a", pothos_id, watered_on, hour=9)
+        _create_watering_record(session, "owner-b", other_owner_plant.id, watered_on)
+        _create_watering_record(
+            session,
+            "owner-a",
+            monstera_id,
+            watered_on - timedelta(days=1),
+        )
+        _create_watering_record(
+            session,
+            "owner-a",
+            pothos_id,
+            range_end + timedelta(days=1),
+        )
+
+        monstera.name = "現在のモンステラ名"
+        session.add(monstera)
+        session.commit()
+
+    response = _client(test_engine, user_id="owner-a").get(
+        "/care/watering-heatmap",
+        params={"from": watered_on.isoformat(), "to": range_end.isoformat()},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["startDate"] == watered_on.isoformat()
+    assert payload["endDate"] == range_end.isoformat()
+    assert [day["date"] for day in payload["days"]] == [
+        watered_on.isoformat(),
+        empty_day.isoformat(),
+        range_end.isoformat(),
+    ]
+
+    active_day = payload["days"][0]
+    assert active_day["plantCount"] == 2
+    assert active_day["level"] == 2
+    assert active_day["plants"] == [
+        {"plantId": monstera_id, "name": "現在のモンステラ名"},
+        {"plantId": pothos_id, "name": "ポトス"},
+    ]
+    assert payload["days"][1] == {
+        "date": empty_day.isoformat(),
+        "plantCount": 0,
+        "level": 0,
+        "plants": [],
+    }
+    assert payload["days"][2]["plantCount"] == 0
+    assert_no_owner_fields(payload)
+
+
+def test_watering_heatmap_route_returns_empty_days_without_records(test_engine):
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 3)
+
+    with Session(test_engine) as session:
+        _create_user(session, "owner-a")
+
+    response = _client(test_engine, user_id="owner-a").get(
+        "/care/watering-heatmap",
+        params={"from": start.isoformat(), "to": end.isoformat()},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "startDate": "2026-05-01",
+        "endDate": "2026-05-03",
+        "days": [
+            {"date": "2026-05-01", "plantCount": 0, "level": 0, "plants": []},
+            {"date": "2026-05-02", "plantCount": 0, "level": 0, "plants": []},
+            {"date": "2026-05-03", "plantCount": 0, "level": 0, "plants": []},
+        ],
+    }
+
+
+def test_watering_heatmap_route_uses_default_recent_range(test_engine):
+    fixed_today = date(2026, 5, 31)
+
+    app = _care_app(test_engine, user_id="owner-a")
+
+    def fixed_service():
+        with Session(test_engine) as session:
+            yield WateringService(
+                PlantRepository(session),
+                WateringRepository(session),
+                today_provider=lambda: fixed_today,
+            )
+
+    app.dependency_overrides[get_watering_service] = fixed_service
+
+    with Session(test_engine) as session:
+        _create_user(session, "owner-a")
+
+    with TestClient(app) as client:
+        response = client.get("/care/watering-heatmap")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["startDate"] == "2026-03-02"
+    assert payload["endDate"] == "2026-05-31"
+    assert len(payload["days"]) == 91
+    assert payload["days"][0]["date"] == "2026-03-02"
+    assert payload["days"][-1]["date"] == "2026-05-31"
+
+
+def test_watering_heatmap_route_requires_authentication_before_service_runs(test_engine):
+    calls: list[str] = []
+
+    class FailingWateringService:
+        def get_watering_heatmap(self, owner_user_id: str, **kwargs):
+            calls.append(owner_user_id)
+            raise AssertionError("Watering service must not run without auth")
+
+    app = _care_app(test_engine)
+    app.dependency_overrides[get_watering_service] = lambda: FailingWateringService()
+
+    with TestClient(app) as client:
+        response = client.get("/care/watering-heatmap")
+
+    assert response.status_code == 401
+    assert calls == []
+
+
+def test_watering_heatmap_route_rejects_inactive_user_before_service_runs(test_engine):
+    calls: list[str] = []
+
+    class FailingWateringService:
+        def get_watering_heatmap(self, owner_user_id: str, **kwargs):
+            calls.append(owner_user_id)
+            raise AssertionError("Watering service must not run for inactive users")
+
+    app = _care_app(test_engine, user_id="inactive-user")
+    app.dependency_overrides[get_current_user] = _forbidden_current_user
+    app.dependency_overrides[get_watering_service] = lambda: FailingWateringService()
+
+    with TestClient(app) as client:
+        response = client.get("/care/watering-heatmap")
+
+    assert response.status_code == 403
+    assert calls == []
+
+
+def test_watering_heatmap_route_uses_internal_current_user_id(test_engine):
+    calls: list[tuple[str, date | None, date | None]] = []
+
+    class SpyWateringService:
+        def get_watering_heatmap(
+            self,
+            owner_user_id: str,
+            start_date: date | None = None,
+            end_date: date | None = None,
+        ) -> WateringHeatmapRead:
+            calls.append((owner_user_id, start_date, end_date))
+            return WateringHeatmapRead(
+                start_date=date(2026, 5, 1),
+                end_date=date(2026, 5, 1),
+                days=[],
+            )
+
+    app = _care_app(test_engine, user_id="internal-user-id")
+    app.dependency_overrides[get_watering_service] = lambda: SpyWateringService()
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/care/watering-heatmap",
+            params={"from": "2026-05-01", "to": "2026-05-02"},
+        )
+
+    assert response.status_code == 200
+    assert calls == [("internal-user-id", date(2026, 5, 1), date(2026, 5, 2))]
+
+
+def test_watering_heatmap_route_rejects_invalid_range(test_engine):
+    reversed_range = _client(test_engine, user_id="owner-a").get(
+        "/care/watering-heatmap",
+        params={"from": "2026-05-31", "to": "2026-05-30"},
+    )
+    too_long_range = _client(test_engine, user_id="owner-a").get(
+        "/care/watering-heatmap",
+        params={"from": "2025-01-01", "to": "2026-01-02"},
+    )
+
+    assert reversed_range.status_code == 422
+    assert (
+        "start date must be on or before end date"
+        in reversed_range.json()["detail"]
+    )
+    assert too_long_range.status_code == 422
+    assert "366 days or fewer" in too_long_range.json()["detail"]
+
+
 def _care_app(test_engine, *, user_id: str | None = None) -> FastAPI:
     app = FastAPI()
     app.include_router(router)
@@ -169,6 +377,44 @@ def _create_plant(
     session.commit()
     session.refresh(plant)
     return plant
+
+
+def _create_watering_record(
+    session: Session,
+    owner_user_id: str,
+    plant_id: int,
+    watered_on: date,
+    *,
+    hour: int = 12,
+) -> WateringRecord:
+    record = WateringRecord(
+        owner_user_id=owner_user_id,
+        plant_id=plant_id,
+        watered_at=datetime(
+            watered_on.year,
+            watered_on.month,
+            watered_on.day,
+            hour,
+            0,
+            tzinfo=timezone.utc,
+        ),
+        created_at=datetime(
+            watered_on.year,
+            watered_on.month,
+            watered_on.day,
+            hour,
+            1,
+            tzinfo=timezone.utc,
+        ),
+    )
+    session.add(record)
+    session.commit()
+    session.refresh(record)
+    return record
+
+
+def _forbidden_current_user() -> CurrentUser:
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
 def _at_utc_midday(value: date) -> datetime:
