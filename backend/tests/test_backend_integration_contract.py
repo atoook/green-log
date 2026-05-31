@@ -44,6 +44,7 @@ def test_main_app_registers_webhook_and_protected_plant_care_routers():
     }
     expected_watering_routes = {
         ("GET", "/care/today"),
+        ("GET", "/care/watering-heatmap"),
         ("GET", "/plants/{plant_id}/watering"),
         ("POST", "/plants/{plant_id}/watering-records"),
     }

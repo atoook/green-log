@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlmodel import Session, select
 
@@ -128,6 +128,113 @@ def test_list_for_plant_returns_empty_history_for_owned_plant_without_records(
     assert history == []
 
 
+def test_list_for_heatmap_returns_owned_records_in_inclusive_date_range_with_current_plant_names(
+    test_engine,
+):
+    with Session(test_engine) as session:
+        plant = _create_user_and_plant(session, "owner-a", "古い名前のポトス")
+        other_owned_plant = _create_plant(
+            session,
+            owner_user_id="owner-a",
+            name="窓辺のモンステラ",
+        )
+        other_owner_plant = _create_user_and_plant(
+            session,
+            "owner-b",
+            "Bのポトス",
+            clerk_user_id="clerk-owner-b",
+        )
+        repository = WateringRepository(session)
+
+        repository.add(
+            WateringRecord(
+                owner_user_id="owner-a",
+                plant_id=plant.id,
+                watered_at=datetime(2026, 5, 30, 23, 59, tzinfo=timezone.utc),
+            )
+        )
+        repository.add(
+            WateringRecord(
+                owner_user_id="owner-a",
+                plant_id=plant.id,
+                watered_at=datetime(2026, 5, 31, 0, 0, tzinfo=timezone.utc),
+            )
+        )
+        repository.add(
+            WateringRecord(
+                owner_user_id="owner-a",
+                plant_id=other_owned_plant.id,
+                watered_at=datetime(2026, 5, 31, 12, 0, tzinfo=timezone.utc),
+            )
+        )
+        repository.add(
+            WateringRecord(
+                owner_user_id="owner-a",
+                plant_id=plant.id,
+                watered_at=datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc),
+            )
+        )
+        repository.add(
+            WateringRecord(
+                owner_user_id="owner-b",
+                plant_id=other_owner_plant.id,
+                watered_at=datetime(2026, 5, 31, 9, 0, tzinfo=timezone.utc),
+            )
+        )
+        plant.name = "現在名のポトス"
+        session.add(plant)
+        session.commit()
+        plant_id = plant.id
+        other_owned_plant_id = other_owned_plant.id
+
+        rows = repository.list_for_heatmap(
+            "owner-a",
+            datetime(2026, 5, 31, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc),
+        )
+
+    assert [(row.watered_on, row.plant_id, row.plant_name) for row in rows] == [
+        (date(2026, 5, 31), plant_id, "現在名のポトス"),
+        (date(2026, 5, 31), other_owned_plant_id, "窓辺のモンステラ"),
+    ]
+
+
+def test_list_for_heatmap_represents_same_day_same_plant_duplicates_for_service_collapse(
+    test_engine,
+):
+    with Session(test_engine) as session:
+        plant = _create_user_and_plant(session, "owner-a", "寝室のフィカス")
+        repository = WateringRepository(session)
+
+        repository.add(
+            WateringRecord(
+                owner_user_id="owner-a",
+                plant_id=plant.id,
+                watered_at=datetime(2026, 5, 31, 8, 0, tzinfo=timezone.utc),
+            )
+        )
+        repository.add(
+            WateringRecord(
+                owner_user_id="owner-a",
+                plant_id=plant.id,
+                watered_at=datetime(2026, 5, 31, 20, 0, tzinfo=timezone.utc),
+            )
+        )
+        session.commit()
+        plant_id = plant.id
+
+        rows = repository.list_for_heatmap(
+            "owner-a",
+            datetime(2026, 5, 31, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc),
+        )
+
+    assert [(row.watered_on, row.plant_id, row.plant_name) for row in rows] == [
+        (date(2026, 5, 31), plant_id, "寝室のフィカス"),
+        (date(2026, 5, 31), plant_id, "寝室のフィカス"),
+    ]
+
+
 def _create_user_and_plant(
     session: Session,
     owner_user_id: str,
@@ -141,6 +248,23 @@ def _create_user_and_plant(
             clerk_user_id=clerk_user_id or f"clerk-{owner_user_id}",
         )
     )
+    plant = Plant(
+        owner_user_id=owner_user_id,
+        name=name,
+        watering_cycle_days=7,
+    )
+    session.add(plant)
+    session.commit()
+    session.refresh(plant)
+    return plant
+
+
+def _create_plant(
+    session: Session,
+    *,
+    owner_user_id: str,
+    name: str,
+) -> Plant:
     plant = Plant(
         owner_user_id=owner_user_id,
         name=name,

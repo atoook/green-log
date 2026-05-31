@@ -15,10 +15,11 @@ from app.schemas.watering import (
     WateringRecordCreateResult,
     WateringRecordRead,
 )
+from app.services.watering_service import APP_TIMEZONE
 
 
 def test_get_plant_watering_route_returns_latest_next_date_and_history(test_engine):
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(APP_TIMEZONE).date()
     latest_watered_at = _at_utc_midday(today - timedelta(days=7))
     older_watered_at = _at_utc_midday(today - timedelta(days=10))
 

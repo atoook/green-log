@@ -105,6 +105,35 @@ test('createWateringApiClient posts an empty body for watering records without o
   assert.equal('clerkUserId' in body, false)
 })
 
+test('createWateringApiClient delegates heatmap requests with an encoded date range', async () => {
+  const { createWateringApiClient } = await loadWateringApiModule()
+  const heatmap = {
+    startDate: '2026-03-01',
+    endDate: '2026-05-31',
+    days: [
+      {
+        date: '2026-05-31',
+        plantCount: 2,
+        level: 2,
+        plants: [
+          { plantId: 7, name: 'Monstera' },
+          { plantId: 9, name: 'Pothos' },
+        ],
+      },
+    ],
+  }
+  const path = '/care/watering-heatmap?from=2026-03-01&to=2026-05-31'
+  const { calls, client } = createRecordingAuthenticatedClient(new Map([[path, heatmap]]))
+
+  const result = await createWateringApiClient(client).getWateringHeatmap({
+    from: '2026-03-01',
+    to: '2026-05-31',
+  })
+
+  assert.deepEqual(result, heatmap)
+  assert.deepEqual(calls, [{ path, init: undefined }])
+})
+
 test('watering api and response types keep auth and owner data out of the client surface', async () => {
   const [wateringApiSource, wateringTypesSource] = await Promise.all([
     readSource('../src/api/watering.ts'),
