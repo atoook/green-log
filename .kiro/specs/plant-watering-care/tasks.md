@@ -82,7 +82,7 @@
     - _Requirements: 6.4, 6.5, 6.6, 6.8, 6.9, 7.3, 7.6_
     - _Boundary: WateringRepository_
 
-  - [ ] 4.3 ヒートマップ read model を組み立てる
+  - [x] 4.3 ヒートマップ read model を組み立てる
     - `from` / `to` の指定期間を inclusive に扱い、記録なしの日も空の実績として補完する。
     - `from` / `to` 省略時は直近 3 か月相当を既定期間として扱う。
     - `from > to` または 366 日を超える期間は validation error として扱う。

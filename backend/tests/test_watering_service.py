@@ -7,6 +7,7 @@ from app.models import Plant, User, WateringRecord
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.watering_repository import WateringRepository
 from app.services.watering_service import (
+    WateringHeatmapRangeError,
     WateringPlantNotFoundError,
     WateringService,
 )
@@ -261,6 +262,139 @@ def test_record_watering_rolls_back_record_when_summary_update_fails(test_engine
 
     assert plant.last_watered_at is None
     assert history == []
+
+
+def test_get_watering_heatmap_fills_inclusive_range_and_distinct_plants(test_engine):
+    with Session(test_engine) as session:
+        pothos = _create_plant(session, "owner-a", "ポトス")
+        monstera = _create_plant(session, "owner-a", "モンステラ")
+        other_owner_plant = _create_plant(session, "owner-b", "Bのフィカス")
+        _add_record(
+            session,
+            "owner-a",
+            pothos.id,
+            datetime(2026, 5, 28, 8, 0, tzinfo=timezone.utc),
+        )
+        _add_record(
+            session,
+            "owner-a",
+            pothos.id,
+            datetime(2026, 5, 28, 18, 0, tzinfo=timezone.utc),
+        )
+        _add_record(
+            session,
+            "owner-a",
+            monstera.id,
+            datetime(2026, 5, 29, 9, 0, tzinfo=timezone.utc),
+        )
+        _add_record(
+            session,
+            "owner-b",
+            other_owner_plant.id,
+            datetime(2026, 5, 29, 9, 0, tzinfo=timezone.utc),
+        )
+
+        heatmap = _service(session).get_watering_heatmap(
+            "owner-a",
+            start_date=date(2026, 5, 28),
+            end_date=date(2026, 5, 30),
+        )
+        pothos_id = pothos.id
+        monstera_id = monstera.id
+
+    assert heatmap.start_date == date(2026, 5, 28)
+    assert heatmap.end_date == date(2026, 5, 30)
+    assert [day.date for day in heatmap.days] == [
+        date(2026, 5, 28),
+        date(2026, 5, 29),
+        date(2026, 5, 30),
+    ]
+    assert heatmap.days[0].plant_count == 1
+    assert heatmap.days[0].level == 1
+    assert [(plant.plant_id, plant.name) for plant in heatmap.days[0].plants] == [
+        (pothos_id, "ポトス"),
+    ]
+    assert heatmap.days[1].plant_count == 1
+    assert heatmap.days[1].level == 1
+    assert [(plant.plant_id, plant.name) for plant in heatmap.days[1].plants] == [
+        (monstera_id, "モンステラ"),
+    ]
+    assert heatmap.days[2].plant_count == 0
+    assert heatmap.days[2].level == 0
+    assert heatmap.days[2].plants == []
+
+
+def test_get_watering_heatmap_caps_level_at_four(test_engine):
+    with Session(test_engine) as session:
+        plants = [
+            _create_plant(session, "owner-a", f"植物{i}")
+            for i in range(1, 6)
+        ]
+        for plant in plants:
+            _add_record(
+                session,
+                "owner-a",
+                plant.id,
+                datetime(2026, 5, 30, 8, 0, tzinfo=timezone.utc),
+            )
+
+        heatmap = _service(session).get_watering_heatmap(
+            "owner-a",
+            start_date=FIXED_TODAY,
+            end_date=FIXED_TODAY,
+        )
+
+    assert heatmap.days[0].plant_count == 5
+    assert heatmap.days[0].level == 4
+    assert [plant.name for plant in heatmap.days[0].plants] == [
+        "植物1",
+        "植物2",
+        "植物3",
+        "植物4",
+        "植物5",
+    ]
+
+
+def test_get_watering_heatmap_uses_default_recent_three_month_equivalent_range(
+    test_engine,
+):
+    with Session(test_engine) as session:
+        plant = _create_plant(session, "owner-a", "既定期間のホヤ")
+        _add_record(
+            session,
+            "owner-a",
+            plant.id,
+            datetime(2026, 3, 1, 8, 0, tzinfo=timezone.utc),
+        )
+
+        heatmap = _service(session).get_watering_heatmap("owner-a")
+
+    assert heatmap.start_date == date(2026, 3, 1)
+    assert heatmap.end_date == FIXED_TODAY
+    assert len(heatmap.days) == 91
+    assert heatmap.days[0].date == date(2026, 3, 1)
+    assert heatmap.days[-1].date == FIXED_TODAY
+    assert heatmap.days[0].plant_count == 1
+    assert heatmap.days[-1].plant_count == 0
+
+
+def test_get_watering_heatmap_rejects_invalid_ranges(test_engine):
+    with Session(test_engine) as session:
+        service = _service(session)
+
+        with pytest.raises(WateringHeatmapRangeError):
+            service.get_watering_heatmap(
+                "owner-a",
+                start_date=date(2026, 5, 31),
+                end_date=date(2026, 5, 30),
+            )
+
+        with pytest.raises(WateringHeatmapRangeError):
+            service.get_watering_heatmap(
+                "owner-a",
+                start_date=date(2025, 5, 29),
+                end_date=date(2026, 5, 30),
+            )
 
 
 class _FailingPlantRepository(PlantRepository):
