@@ -125,7 +125,7 @@
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.6, 6.7, 6.8, 6.9, 7.3, 7.6_
     - _Boundary: Frontend watering API client_
 
-  - [ ] 6.2 ヒートマップ用 composable を追加する
+  - [x] 6.2 ヒートマップ用 composable を追加する
     - ホーム画面用に直近 3 か月相当の `from` / `to` を組み立てる。
     - loading、error、retry、選択中の日付を画面から扱える状態として提供する。
     - 認証エラーまたは権限エラー時は保護データを成功状態として残さない。
