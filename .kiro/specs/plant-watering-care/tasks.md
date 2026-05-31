@@ -205,7 +205,7 @@
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 4.5, 7.1, 7.4, 7.6, 8.1, 8.2, 8.6, 11.1, 11.2, 11.3, 11.4_
     - _Boundary: CareRouter, WateringService, Watering schemas_
 
-  - [ ] 9.2 `/care/upcoming` の backend 回帰テストを追加する
+  - [x] 9.2 `/care/upcoming` の backend 回帰テストを追加する
     - 未指定、`days=3`、不正な `days`、植物 0 件、日別空 section、未記録、期限超過、今日予定、明日予定、明後日予定を検証する。
     - `/care/today` が直近予定 API として残っていないことを検証する。
     - 認証失敗、無効ユーザー、他ユーザー所有データの混入防止、owner field 非公開を検証する。

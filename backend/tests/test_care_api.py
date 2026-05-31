@@ -114,6 +114,43 @@ def test_upcoming_care_route_defaults_to_today_only(test_engine):
     }
 
 
+def test_upcoming_care_route_keeps_empty_future_sections(test_engine):
+    today = datetime.now(APP_TIMEZONE).date()
+
+    with Session(test_engine) as session:
+        unrecorded = _create_plant(session, "owner-a", "初回待ちのポトス")
+        unrecorded_id = unrecorded.id
+
+    response = _client(test_engine, user_id="owner-a").get("/care/upcoming", params={"days": 3})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [section["date"] for section in payload["sections"]] == [
+        today.isoformat(),
+        (today + timedelta(days=1)).isoformat(),
+        (today + timedelta(days=2)).isoformat(),
+    ]
+    assert [item["plantId"] for item in payload["sections"][0]["items"]] == [unrecorded_id]
+    assert payload["sections"][1]["items"] == []
+    assert payload["sections"][2]["items"] == []
+
+
+def test_upcoming_care_route_rejects_days_outside_mvp_range(test_engine):
+    for invalid_days in (0, 15):
+        response = _client(test_engine, user_id="owner-a").get(
+            "/care/upcoming",
+            params={"days": invalid_days},
+        )
+
+        assert response.status_code == 422
+
+
+def test_today_care_route_is_removed(test_engine):
+    response = _client(test_engine, user_id="owner-a").get("/care/today")
+
+    assert response.status_code == 404
+
+
 def test_upcoming_care_route_requires_authentication_before_service_runs(test_engine):
     calls: list[str] = []
 
