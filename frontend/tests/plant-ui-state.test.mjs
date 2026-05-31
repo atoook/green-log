@@ -48,6 +48,31 @@ test('PlantList has distinct safe error messages and own-plant empty state', asy
   assert.doesNotMatch(source, outOfScopeUi)
 })
 
+test('PlantList shows days since arrival and unrecorded arrival date without backend fallback', async () => {
+  const source = await readSource('src/components/plants/PlantList.vue')
+  const functionMatch = source.match(/function\s+daysSinceArrivalLabel[\s\S]*?\n}\n<\/script>/)
+
+  assert.ok(functionMatch)
+
+  const functionSource = functionMatch[0]
+    .replace(/\n<\/script>/, '')
+    .replace(/acquiredDate:\s*string\s*\|\s*null/, 'acquiredDate')
+    .replace(/\):\s*string\s*\{/, ') {')
+  const daysSinceArrivalLabel = new Function(`${functionSource}; return daysSinceArrivalLabel`)()
+
+  assert.equal(daysSinceArrivalLabel('2026-05-19', new Date(2026, 4, 31, 23, 0)), '家に来てから12日')
+  assert.equal(daysSinceArrivalLabel('2026-05-31', new Date(2026, 4, 31, 0, 0)), '家に来てから0日')
+  assert.equal(daysSinceArrivalLabel(null, new Date(2026, 4, 31)), '家に来た日は未記録')
+  assert.match(source, /function\s+daysSinceArrivalLabel\s*\([^)]*acquiredDate[^)]*string\s*\|\s*null[^)]*today\s*=\s*new Date/)
+  assert.match(source, /家に来てから\$\{daysSinceArrival\}日/)
+  assert.match(source, /家に来た日は未記録/)
+  assert.match(source, /const\s+millisecondsPerDay\s*=\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000/)
+  assert.match(source, /Date\.UTC\([^)]*getFullYear\(\)[\s\S]*getMonth\(\)[\s\S]*getDate\(\)/)
+  assert.match(source, /Date\.UTC\([^)]*acquiredYear[\s\S]*acquiredMonth\s*-\s*1[\s\S]*acquiredDay/)
+  assert.doesNotMatch(source, /daysSinceArrivalLabel\([^)]*createdAt/)
+  assert.doesNotMatch(source, /createdAt[\s\S]{0,120}家に来てから/)
+})
+
 test('PlantDetail keeps not-found behavior and safe auth/forbidden messages', async () => {
   const source = await readSource('src/components/plants/PlantDetail.vue')
 
