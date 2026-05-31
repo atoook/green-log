@@ -8,6 +8,9 @@ from app.schemas.watering import (
     PlantWateringStateRead,
     TodayCareItemRead,
     TodayCareRead,
+    WateringHeatmapDayRead,
+    WateringHeatmapPlantRead,
+    WateringHeatmapRead,
     WateringPlantSummaryRead,
     WateringRecordCreateResult,
     WateringRecordRead,
@@ -157,3 +160,100 @@ def test_watering_schemas_accept_existing_camel_case_validation_aliases():
     assert state.next_watering_date is None
     assert state.is_due_today is True
     assert state.due_status == "unrecorded"
+
+
+def test_watering_heatmap_schema_serializes_empty_day_with_camel_case_and_no_owner_fields():
+    heatmap = WateringHeatmapRead(
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 1),
+        days=[
+            WateringHeatmapDayRead(
+                date=date(2026, 5, 1),
+                plant_count=0,
+                level=0,
+                plants=[],
+            )
+        ],
+    )
+
+    payload = heatmap.model_dump(mode="json", by_alias=True)
+
+    assert payload == {
+        "startDate": "2026-05-01",
+        "endDate": "2026-05-01",
+        "days": [
+            {
+                "date": "2026-05-01",
+                "plantCount": 0,
+                "level": 0,
+                "plants": [],
+            }
+        ],
+    }
+    dumped_text = str(payload)
+    assert "owner" not in dumped_text
+    assert "auth" not in dumped_text
+    assert "ownerUserId" not in dumped_text
+
+
+def test_watering_heatmap_schema_represents_multiple_current_plant_names():
+    day = WateringHeatmapDayRead(
+        date=date(2026, 5, 2),
+        plant_count=2,
+        level=2,
+        plants=[
+            WateringHeatmapPlantRead(plant_id=10, name="窓辺のポトス"),
+            WateringHeatmapPlantRead(plant_id=11, name="リビングのモンステラ"),
+        ],
+    )
+
+    payload = day.model_dump(mode="json", by_alias=True)
+
+    assert payload == {
+        "date": "2026-05-02",
+        "plantCount": 2,
+        "level": 2,
+        "plants": [
+            {"plantId": 10, "name": "窓辺のポトス"},
+            {"plantId": 11, "name": "リビングのモンステラ"},
+        ],
+    }
+    assert [plant["name"] for plant in payload["plants"]] == [
+        "窓辺のポトス",
+        "リビングのモンステラ",
+    ]
+
+
+def test_watering_heatmap_schema_accepts_camel_case_and_rejects_invalid_level():
+    heatmap = WateringHeatmapRead.model_validate(
+        {
+            "startDate": "2026-05-01",
+            "endDate": "2026-05-02",
+            "days": [
+                {
+                    "date": "2026-05-02",
+                    "plantCount": 1,
+                    "level": 1,
+                    "plants": [{"plantId": 12, "name": "寝室のフィカス"}],
+                }
+            ],
+        }
+    )
+
+    assert heatmap.start_date == date(2026, 5, 1)
+    assert heatmap.end_date == date(2026, 5, 2)
+    assert heatmap.days[0].plant_count == 1
+    assert heatmap.days[0].plants[0].plant_id == 12
+    assert heatmap.days[0].plants[0].name == "寝室のフィカス"
+
+    try:
+        WateringHeatmapDayRead(
+            date=date(2026, 5, 3),
+            plant_count=5,
+            level=5,
+            plants=[],
+        )
+    except ValueError as exc:
+        assert "level" in str(exc)
+    else:
+        raise AssertionError("level must be constrained to 0-4")
