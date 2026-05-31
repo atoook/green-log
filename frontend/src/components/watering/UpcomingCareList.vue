@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ApiError } from '../../types/api'
-import type { UpcomingCareItem } from '../../types/watering'
+import type { UpcomingCareItem, UpcomingCareSection } from '../../types/watering'
 import WateringActionButton from './WateringActionButton.vue'
 
 withDefaults(
   defineProps<{
-    items: UpcomingCareItem[]
+    sections: UpcomingCareSection[]
     isLoading: boolean
     error: ApiError | null
     recordingError: ApiError | null
@@ -69,7 +69,7 @@ function dueStatusLabel(item: UpcomingCareItem): string {
     case 'due_today':
       return '今日がお世話の日'
     default:
-      return '今日確認'
+      return '予定を確認'
   }
 }
 
@@ -82,7 +82,7 @@ function dueStatusHelp(item: UpcomingCareItem): string {
     case 'due_today':
       return '今日が次回予定日です。水やりできたら記録しましょう。'
     default:
-      return '今日の水やりを確認しましょう。'
+      return '次回予定日が近づいています。水やりできたら記録しましょう。'
   }
 }
 
@@ -115,6 +115,27 @@ function formatDate(value: string): string {
   return `${Number(match.groups.month)}月${Number(match.groups.day)}日`
 }
 
+function sectionTitle(section: UpcomingCareSection): string {
+  switch (section.kind) {
+    case 'today':
+      return '今日のお世話'
+    case 'tomorrow':
+      return '明日のお世話'
+    case 'day_after_tomorrow':
+      return '明後日のお世話'
+    default:
+      return `${formatDate(section.date)}のお世話`
+  }
+}
+
+function sectionEmptyMessage(section: UpcomingCareSection): string {
+  if (section.kind === 'today') {
+    return '今日必要な水やりはありません。'
+  }
+
+  return 'この日に必要な水やりはありません。'
+}
+
 function lastWateredLabel(item: UpcomingCareItem): string {
   if (!item.lastWateredAt) {
     return 'まだ水やり記録がありません'
@@ -133,10 +154,10 @@ function nextWateringLabel(item: UpcomingCareItem): string {
 </script>
 
 <template>
-  <section class="grid gap-4" aria-labelledby="today-care-title">
+  <section class="grid gap-4" aria-labelledby="upcoming-care-title">
     <div class="grid gap-1">
-      <p class="text-sm font-semibold text-leaf-700">今日のお世話</p>
-      <h2 id="today-care-title" class="text-xl font-semibold text-stone-950">水やりが必要な植物</h2>
+      <p class="text-sm font-semibold text-leaf-700">直近のお世話</p>
+      <h2 id="upcoming-care-title" class="text-xl font-semibold text-stone-950">水やり予定</h2>
     </div>
 
     <p v-if="isLoading" class="rounded-md bg-white p-4 text-sm text-stone-600" aria-live="polite">
@@ -148,59 +169,74 @@ function nextWateringLabel(item: UpcomingCareItem): string {
       <button class="mt-3 font-semibold underline" type="button" @click="emit('retry')">もう一度</button>
     </div>
 
-    <div v-else-if="items.length === 0" class="rounded-md bg-leaf-50 p-5 text-sm text-stone-700">
-      <p class="font-semibold text-stone-950">今日必要な水やりはありません。</p>
-      <p class="mt-2">
-        新しい植物を登録したら、ここで今日のお世話を確認できます。植物を登録して暮らしの記録を増やしましょう。
-      </p>
-    </div>
-
     <div v-else class="grid gap-3">
       <div v-if="recordingError" class="rounded-md bg-red-50 p-3 text-sm text-red-800" aria-live="polite">
         {{ recordingErrorMessage(recordingError) }}
       </div>
 
-      <ul class="grid gap-3">
-        <li v-for="item in items" :key="item.plantId" class="rounded-md border border-stone-200 bg-white p-4">
-          <article class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-            <div class="min-w-0 grid gap-3">
-              <div class="flex flex-wrap items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-sm font-semibold text-leaf-700">今日水やりが必要</p>
-                  <h3 class="break-words text-lg font-semibold text-stone-950">{{ item.plant.name }}</h3>
+      <section
+        v-for="section in sections"
+        :key="section.date"
+        class="grid gap-3 rounded-md border border-stone-200 bg-white p-4"
+      >
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 class="text-lg font-semibold text-stone-950">{{ sectionTitle(section) }}</h3>
+          <p class="text-sm font-semibold text-stone-500">{{ formatDate(section.date) }}</p>
+        </div>
+
+        <div v-if="section.items.length === 0" class="rounded-md bg-leaf-50 p-4 text-sm text-stone-700">
+          <p class="font-semibold text-stone-950">{{ sectionEmptyMessage(section) }}</p>
+          <p class="mt-2">
+            新しい植物を登録したら、ここで水やり予定を確認できます。植物を登録して暮らしの記録を増やしましょう。
+          </p>
+        </div>
+
+        <ul v-else class="grid gap-3">
+          <li
+            v-for="item in section.items"
+            :key="`${section.date}-${item.plantId}`"
+            class="rounded-md border border-stone-200 bg-stone-50 p-4"
+          >
+            <article class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+              <div class="min-w-0 grid gap-3">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-leaf-700">{{ sectionTitle(section) }}</p>
+                    <h4 class="break-words text-lg font-semibold text-stone-950">{{ item.plant.name }}</h4>
+                  </div>
+                  <span :class="dueStatusClasses(item)">{{ dueStatusLabel(item) }}</span>
                 </div>
-                <span :class="dueStatusClasses(item)">{{ dueStatusLabel(item) }}</span>
+
+                <dl class="grid gap-2 text-sm text-stone-700 sm:grid-cols-3">
+                  <div class="min-w-0 rounded-md bg-white p-3">
+                    <dt class="font-semibold text-stone-950">水やりの目安</dt>
+                    <dd>{{ item.plant.wateringCycleDays }}日ごと</dd>
+                  </div>
+                  <div class="min-w-0 rounded-md bg-white p-3">
+                    <dt class="font-semibold text-stone-950">最新の水やり</dt>
+                    <dd>{{ lastWateredLabel(item) }}</dd>
+                  </div>
+                  <div class="min-w-0 rounded-md bg-white p-3">
+                    <dt class="font-semibold text-stone-950">次回予定日</dt>
+                    <dd>{{ nextWateringLabel(item) }}</dd>
+                  </div>
+                </dl>
+
+                <p class="break-words text-sm text-stone-600">{{ dueStatusHelp(item) }}</p>
               </div>
 
-              <dl class="grid gap-2 text-sm text-stone-700 sm:grid-cols-3">
-                <div class="min-w-0 rounded-md bg-stone-50 p-3">
-                  <dt class="font-semibold text-stone-950">水やりの目安</dt>
-                  <dd>{{ item.plant.wateringCycleDays }}日ごと</dd>
-                </div>
-                <div class="min-w-0 rounded-md bg-stone-50 p-3">
-                  <dt class="font-semibold text-stone-950">最新の水やり</dt>
-                  <dd>{{ lastWateredLabel(item) }}</dd>
-                </div>
-                <div class="min-w-0 rounded-md bg-stone-50 p-3">
-                  <dt class="font-semibold text-stone-950">次回予定日</dt>
-                  <dd>{{ nextWateringLabel(item) }}</dd>
-                </div>
-              </dl>
-
-              <p class="break-words text-sm text-stone-600">{{ dueStatusHelp(item) }}</p>
-            </div>
-
-            <div class="w-full md:w-auto md:min-w-44">
-              <WateringActionButton
-                :is-recording="Boolean(isRecordingByPlantId[item.plantId])"
-                :has-error="Boolean(recordingError)"
-                :was-successful="successfulPlantId === item.plantId"
-                @record="emit('record', item.plantId)"
-              />
-            </div>
-          </article>
-        </li>
-      </ul>
+              <div class="w-full md:w-auto md:min-w-44">
+                <WateringActionButton
+                  :is-recording="Boolean(isRecordingByPlantId[item.plantId])"
+                  :has-error="Boolean(recordingError)"
+                  :was-successful="successfulPlantId === item.plantId"
+                  @record="emit('record', item.plantId)"
+                />
+              </div>
+            </article>
+          </li>
+        </ul>
+      </section>
     </div>
   </section>
 </template>

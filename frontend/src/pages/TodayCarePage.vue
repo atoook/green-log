@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import TodayCareList from '../components/watering/TodayCareList.vue'
+import UpcomingCareList from '../components/watering/UpcomingCareList.vue'
 import { useUpcomingCare } from '../composables/useUpcomingCare'
 
 const {
-  items,
+  sections,
   isLoading,
   error,
   recordingError,
@@ -16,13 +16,13 @@ const {
 
 const successfulPlantId = ref<number | null>(null)
 
-async function recordTodayCare(plantId: number): Promise<void> {
+async function recordUpcomingCare(plantId: number): Promise<void> {
   successfulPlantId.value = null
   const result = await recordWatering(plantId)
   successfulPlantId.value = result?.record.plantId ?? null
 }
 
-function retryTodayCare(): void {
+function retryUpcomingCare(): void {
   successfulPlantId.value = null
   void loadUpcomingCare()
 }
@@ -34,7 +34,7 @@ function retryTodayCare(): void {
       <p class="text-sm font-semibold text-leaf-700">暮らしの記録</p>
       <h1 class="text-2xl font-semibold text-stone-950">今日のお世話</h1>
       <p class="max-w-2xl text-sm leading-6 text-stone-600">
-        今日水やりが必要な植物を確認し、水やりできたらその場で記録できます。
+        今日から明後日までの水やり予定を確認し、水やりできたらその場で記録できます。
       </p>
     </section>
 
@@ -46,15 +46,15 @@ function retryTodayCare(): void {
       {{ successMessage }}
     </p>
 
-    <TodayCareList
-      :items="items"
+    <UpcomingCareList
+      :sections="sections"
       :is-loading="isLoading"
       :error="error"
       :recording-error="recordingError"
       :is-recording-by-plant-id="isRecordingByPlantId"
       :successful-plant-id="successfulPlantId"
-      @record="recordTodayCare"
-      @retry="retryTodayCare"
+      @record="recordUpcomingCare"
+      @retry="retryUpcomingCare"
     />
   </main>
 </template>
