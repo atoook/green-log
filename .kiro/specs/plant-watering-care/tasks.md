@@ -233,7 +233,7 @@
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 2.1, 2.2, 2.5, 4.2, 8.1, 8.2, 8.6, 9.1, 9.2, 9.3, 9.4, 11.2, 11.3_
     - _Boundary: TodayCarePage, UpcomingCareList, WateringActionButton_
 
-  - [ ] 9.5 直近予定表示の frontend 検証と最終回帰を行う
+  - [x] 9.5 直近予定表示の frontend 検証と最終回帰を行う
     - フロントエンドテストまたはビルドで upcoming care の型、composable、section rendering、旧 TodayCare 呼び出し削除を確認する。
     - ブラウザまたは UI 検証で、今日だけ取得と 3 日分表示、各日の空状態、記録後の再取得、小画面表示を確認する。
     - backend テスト、frontend build、必要な smoke 検証を実行し、既存の植物詳細、履歴、ヒートマップ、MVP 境界が壊れていないことを確認する。
