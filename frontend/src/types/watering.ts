@@ -39,3 +39,28 @@ export interface WateringRecordCreateResult {
   record: WateringRecord
   state: PlantWateringDetail
 }
+
+export type WateringHeatmapLevel = 0 | 1 | 2 | 3 | 4
+
+export interface WateringHeatmapRange {
+  from: string
+  to: string
+}
+
+export interface WateringHeatmapPlant {
+  plantId: number
+  name: string
+}
+
+export interface WateringHeatmapDay {
+  date: string
+  plantCount: number
+  level: WateringHeatmapLevel
+  plants: WateringHeatmapPlant[]
+}
+
+export interface WateringHeatmap {
+  startDate: string
+  endDate: string
+  days: WateringHeatmapDay[]
+}

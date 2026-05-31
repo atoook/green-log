@@ -2,6 +2,8 @@ import type { AuthenticatedApiClient } from '../types/api'
 import type {
   PlantWateringDetail,
   TodayCare,
+  WateringHeatmap,
+  WateringHeatmapRange,
   WateringRecordCreateResult,
 } from '../types/watering'
 
@@ -9,6 +11,7 @@ export interface WateringApiClient {
   getTodayCare(): Promise<TodayCare>
   getPlantWatering(plantId: number): Promise<PlantWateringDetail>
   recordWatering(plantId: number): Promise<WateringRecordCreateResult>
+  getWateringHeatmap(range: WateringHeatmapRange): Promise<WateringHeatmap>
 }
 
 export function createWateringApiClient(apiClient: AuthenticatedApiClient): WateringApiClient {
@@ -26,6 +29,15 @@ export function createWateringApiClient(apiClient: AuthenticatedApiClient): Wate
         method: 'POST',
         body: JSON.stringify({}),
       })
+    },
+
+    getWateringHeatmap(range: WateringHeatmapRange): Promise<WateringHeatmap> {
+      const params = new URLSearchParams({
+        from: range.from,
+        to: range.to,
+      })
+
+      return apiClient.request<WateringHeatmap>(`/care/watering-heatmap?${params.toString()}`)
     },
   }
 }
