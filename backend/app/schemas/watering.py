@@ -25,6 +25,7 @@ class WateringSchema(SQLModel):
 class WateringPlantSummaryRead(WateringSchema):
     id: int
     name: str
+    acquired_date: date | None = None
     image_url: str | None = None
     watering_cycle_days: int
 

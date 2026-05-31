@@ -22,7 +22,12 @@ def test_upcoming_care_route_returns_owned_plants_grouped_by_requested_days(test
     ten_days_ago = today - timedelta(days=10)
 
     with Session(test_engine) as session:
-        unrecorded = _create_plant(session, "owner-a", "未記録のポトス")
+        unrecorded = _create_plant(
+            session,
+            "owner-a",
+            "未記録のポトス",
+            acquired_date=today - timedelta(days=12),
+        )
         due_today = _create_plant(
             session,
             "owner-a",
@@ -84,6 +89,9 @@ def test_upcoming_care_route_returns_owned_plants_grouped_by_requested_days(test
     assert payload["sections"][0]["items"][0]["lastWateredAt"] is None
     assert payload["sections"][0]["items"][0]["nextWateringDate"] is None
     assert payload["sections"][0]["items"][0]["plant"]["name"] == "未記録のポトス"
+    assert payload["sections"][0]["items"][0]["plant"]["acquiredDate"] == (
+        today - timedelta(days=12)
+    ).isoformat()
 
     assert payload["sections"][0]["items"][1]["dueStatus"] == "due_today"
     assert payload["sections"][0]["items"][1]["nextWateringDate"] == today.isoformat()
@@ -443,6 +451,7 @@ def _create_plant(
     owner_user_id: str,
     name: str,
     *,
+    acquired_date: date | None = None,
     last_watered_at: datetime | None = None,
     watering_cycle_days: int = 7,
 ) -> Plant:
@@ -450,6 +459,7 @@ def _create_plant(
     plant = Plant(
         owner_user_id=owner_user_id,
         name=name,
+        acquired_date=acquired_date,
         watering_cycle_days=watering_cycle_days,
         last_watered_at=last_watered_at,
     )

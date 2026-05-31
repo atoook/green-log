@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ApiError } from '../../types/api'
 import type { UpcomingCareItem, UpcomingCareSection } from '../../types/watering'
+import { daysSinceArrivalLabel } from '../../utils/arrival'
 import WateringActionButton from './WateringActionButton.vue'
 
 withDefaults(
@@ -203,6 +204,11 @@ function nextWateringLabel(item: UpcomingCareItem): string {
                   <div class="min-w-0">
                     <p class="text-sm font-semibold text-leaf-700">{{ sectionTitle(section) }}</p>
                     <h4 class="break-words text-lg font-semibold text-stone-950">{{ item.plant.name }}</h4>
+                    <p
+                      class="mt-1 inline-flex w-fit max-w-full rounded-md bg-leaf-50 px-2.5 py-1 text-xs font-semibold text-leaf-700"
+                    >
+                      {{ daysSinceArrivalLabel(item.plant.acquiredDate) }}
+                    </p>
                   </div>
                   <span :class="dueStatusClasses(item)">{{ dueStatusLabel(item) }}</span>
                 </div>

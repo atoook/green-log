@@ -236,6 +236,7 @@ class WateringService:
             plant=WateringPlantSummaryRead(
                 id=_require_id(plant.id),
                 name=plant.name,
+                acquired_date=plant.acquired_date,
                 image_url=plant.image_url,
                 watering_cycle_days=plant.watering_cycle_days,
             ),

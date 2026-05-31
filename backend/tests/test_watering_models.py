@@ -87,6 +87,7 @@ def test_upcoming_care_schema_serializes_sections_with_camel_case_and_utc_dateti
         plant=WateringPlantSummaryRead(
             id=2,
             name="リビングのモンステラ",
+            acquired_date=date(2026, 5, 1),
             image_url=None,
             watering_cycle_days=7,
         ),
@@ -115,6 +116,7 @@ def test_upcoming_care_schema_serializes_sections_with_camel_case_and_utc_dateti
     assert payload["sections"][0]["items"][0]["plant"] == {
         "id": 2,
         "name": "リビングのモンステラ",
+        "acquiredDate": "2026-05-01",
         "imageUrl": None,
         "wateringCycleDays": 7,
     }

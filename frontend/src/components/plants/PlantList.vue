@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { ApiError, Plant } from '../../types/plant'
+import { daysSinceArrivalLabel } from '../../utils/arrival'
 
 defineProps<{
   plants: Plant[]
@@ -38,24 +39,6 @@ function markImageBroken(plantId: number): void {
   brokenImageIds.value = new Set([...brokenImageIds.value, plantId])
 }
 
-function daysSinceArrivalLabel(acquiredDate: string | null, today = new Date()): string {
-  if (!acquiredDate) {
-    return '家に来た日は未記録'
-  }
-
-  const [acquiredYear, acquiredMonth, acquiredDay] = acquiredDate.split('-').map(Number)
-
-  if (!acquiredYear || !acquiredMonth || !acquiredDay) {
-    return '家に来た日は未記録'
-  }
-
-  const todayDate = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
-  const acquiredDateOnly = Date.UTC(acquiredYear, acquiredMonth - 1, acquiredDay)
-  const millisecondsPerDay = 24 * 60 * 60 * 1000
-  const daysSinceArrival = Math.max(0, Math.floor((todayDate - acquiredDateOnly) / millisecondsPerDay))
-
-  return `家に来てから${daysSinceArrival}日`
-}
 </script>
 
 <template>
@@ -96,9 +79,13 @@ function daysSinceArrivalLabel(acquiredDate: string | null, today = new Date()):
           <span v-else class="flex h-16 w-16 items-center justify-center rounded-md bg-soil-100 text-sm text-soil-700">
             記録
           </span>
-          <span>
+          <span class="min-w-0">
             <span class="block font-semibold text-stone-950">{{ plant.name }}</span>
-            <span class="block text-sm text-stone-600">{{ daysSinceArrivalLabel(plant.acquiredDate) }}</span>
+            <span
+              class="mt-1 inline-flex w-fit max-w-full rounded-md bg-leaf-50 px-2.5 py-1 text-xs font-semibold text-leaf-700"
+            >
+              {{ daysSinceArrivalLabel(plant.acquiredDate) }}
+            </span>
             <span class="block text-sm text-stone-600">{{ plant.wateringCycleDays }}日ごとにお世話</span>
           </span>
         </button>

@@ -3,6 +3,7 @@ export type DueStatus = 'unrecorded' | 'due_today' | 'overdue'
 export interface WateringPlantSummary {
   id: number
   name: string
+  acquiredDate: string | null
   imageUrl: string | null
   wateringCycleDays: number
 }
