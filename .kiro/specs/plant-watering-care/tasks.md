@@ -92,7 +92,7 @@
     - _Boundary: WateringService_
 
 - [ ] 5. 水やりヒートマップ API を公開して検証する
-  - [ ] 5.1 ヒートマップ endpoint を追加する
+  - [x] 5.1 ヒートマップ endpoint を追加する
     - `from` / `to` query parameter を ISO date として受け付ける。
     - 認証済みユーザーの水やり記録だけを集計して返す。
     - 完了条件: `GET /care/watering-heatmap?from=YYYY-MM-DD&to=YYYY-MM-DD` がヒートマップ read model を返し、不正な期間は 422 になる。
