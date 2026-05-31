@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import TodayCareList from '../components/watering/TodayCareList.vue'
-import { useTodayCare } from '../composables/useTodayCare'
+import { useUpcomingCare } from '../composables/useUpcomingCare'
 
 const {
   items,
@@ -10,9 +10,9 @@ const {
   recordingError,
   isRecordingByPlantId,
   successMessage,
-  loadTodayCare,
+  loadUpcomingCare,
   recordWatering,
-} = useTodayCare()
+} = useUpcomingCare()
 
 const successfulPlantId = ref<number | null>(null)
 
@@ -24,7 +24,7 @@ async function recordTodayCare(plantId: number): Promise<void> {
 
 function retryTodayCare(): void {
   successfulPlantId.value = null
-  void loadTodayCare()
+  void loadUpcomingCare()
 }
 </script>
 

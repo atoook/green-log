@@ -7,7 +7,7 @@ const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'u
 const outOfScopeCareUi =
   /通知|スキップ|延期|カレンダー|ダッシュボード|タスク|管理|Notification|permission|skip|defer|calendar|dashboard/i
 
-test('TodayCarePage composes useTodayCare and TodayCareList for the in-page watering flow', async () => {
+test('TodayCarePage composes useUpcomingCare and TodayCareList for the in-page watering flow', async () => {
   const source = await readSource('src/pages/TodayCarePage.vue')
 
   assert.match(source, /import\s+\{\s*ref\s*\}\s+from\s+['"]vue['"]/)
@@ -15,10 +15,10 @@ test('TodayCarePage composes useTodayCare and TodayCareList for the in-page wate
     source,
     /import\s+TodayCareList\s+from\s+['"]\.\.\/components\/watering\/TodayCareList\.vue['"]/,
   )
-  assert.match(source, /import\s+\{\s*useTodayCare\s*\}\s+from\s+['"]\.\.\/composables\/useTodayCare['"]/)
+  assert.match(source, /import\s+\{\s*useUpcomingCare\s*\}\s+from\s+['"]\.\.\/composables\/useUpcomingCare['"]/)
   assert.match(
     source,
-    /const\s+\{[\s\S]*items[\s\S]*isLoading[\s\S]*error[\s\S]*recordingError[\s\S]*isRecordingByPlantId[\s\S]*successMessage[\s\S]*loadTodayCare[\s\S]*recordWatering[\s\S]*\}\s*=\s*useTodayCare\(\)/,
+    /const\s+\{[\s\S]*items[\s\S]*isLoading[\s\S]*error[\s\S]*recordingError[\s\S]*isRecordingByPlantId[\s\S]*successMessage[\s\S]*loadUpcomingCare[\s\S]*recordWatering[\s\S]*\}\s*=\s*useUpcomingCare\(\)/,
   )
   assert.match(source, /const\s+successfulPlantId\s*=\s*ref<number\s*\|\s*null>\(null\)/)
   assert.match(
@@ -27,7 +27,7 @@ test('TodayCarePage composes useTodayCare and TodayCareList for the in-page wate
   )
   assert.match(
     source,
-    /function\s+retryTodayCare\(\):\s*void\s*\{[\s\S]*successfulPlantId\.value\s*=\s*null[\s\S]*void\s+loadTodayCare\(\)/,
+    /function\s+retryTodayCare\(\):\s*void\s*\{[\s\S]*successfulPlantId\.value\s*=\s*null[\s\S]*void\s+loadUpcomingCare\(\)/,
   )
   assert.match(
     source,

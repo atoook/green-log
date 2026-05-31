@@ -8,20 +8,20 @@ async function readSource(path) {
   return readFile(sourceUrl, 'utf8')
 }
 
-async function loadTodayCareComposableModule() {
-  const source = await readSource('../src/composables/useTodayCare.ts')
+async function loadUpcomingCareComposableModule() {
+  const source = await readSource('../src/composables/useUpcomingCare.ts')
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: {
       module: ts.ModuleKind.ES2022,
       target: ts.ScriptTarget.ES2022,
       verbatimModuleSyntax: true,
     },
-    fileName: 'useTodayCare.ts',
+    fileName: 'useUpcomingCare.ts',
   })
 
   const mountedCallbacks = []
   const factoryCalls = []
-  globalThis.__todayCareVueMock = {
+  globalThis.__upcomingCareVueMock = {
     computed(getter) {
       return {
         get value() {
@@ -36,17 +36,17 @@ async function loadTodayCareComposableModule() {
       return { value }
     },
   }
-  globalThis.__todayCareWateringApiMock = {
+  globalThis.__upcomingCareWateringApiMock = {
     createWateringApiClient(apiClient) {
       factoryCalls.push(apiClient)
       return apiClient
     },
   }
-  globalThis.__todayCareAuthApiMock = {
+  globalThis.__upcomingCareAuthApiMock = {
     useAuthenticatedApi() {
       return {
-        async getTodayCare() {
-          return { today: '2026-05-30', items: [] }
+        async getUpcomingCare(days) {
+          return createUpcomingCare([], days)
         },
         async recordWatering() {
           throw createApiError('server')
@@ -58,15 +58,15 @@ async function loadTodayCareComposableModule() {
   const runnable = outputText
     .replace(
       /import\s+\{\s*computed,\s*onMounted,\s*ref\s*\}\s+from\s+['"]vue['"];?/,
-      'const { computed, onMounted, ref } = globalThis.__todayCareVueMock;',
+      'const { computed, onMounted, ref } = globalThis.__upcomingCareVueMock;',
     )
     .replace(
       /import\s+\{\s*createWateringApiClient\s*\}\s+from\s+['"]\.\.\/api\/watering['"];?/,
-      'const { createWateringApiClient } = globalThis.__todayCareWateringApiMock;',
+      'const { createWateringApiClient } = globalThis.__upcomingCareWateringApiMock;',
     )
     .replace(
       /import\s+\{\s*useAuthenticatedApi\s*\}\s+from\s+['"]\.\/useAuthenticatedApi['"];?/,
-      'const { useAuthenticatedApi } = globalThis.__todayCareAuthApiMock;',
+      'const { useAuthenticatedApi } = globalThis.__upcomingCareAuthApiMock;',
     )
 
   assert.doesNotMatch(runnable, /^import\s/m)
@@ -82,10 +82,27 @@ function createApiError(type) {
   return Object.assign(new Error(type), { type })
 }
 
-function createTodayCare(items = []) {
+function createUpcomingCare(items = [], days = 3) {
   return {
-    today: '2026-05-30',
-    items,
+    startDate: '2026-05-30',
+    days,
+    sections: [
+      {
+        date: '2026-05-30',
+        kind: 'today',
+        items,
+      },
+      {
+        date: '2026-05-31',
+        kind: 'tomorrow',
+        items: [],
+      },
+      {
+        date: '2026-06-01',
+        kind: 'day_after_tomorrow',
+        items: [],
+      },
+    ].slice(0, days),
   }
 }
 
@@ -105,39 +122,41 @@ function createCareItem(plantId = 7) {
   }
 }
 
-test('useTodayCare loads today care and exposes empty state separately from errors', async () => {
-  const { module } = await loadTodayCareComposableModule()
+test('useUpcomingCare loads upcoming care and exposes empty state separately from errors', async () => {
+  const { module } = await loadUpcomingCareComposableModule()
   const calls = []
   const apiClient = {
-    async getTodayCare() {
-      calls.push('getTodayCare')
-      return createTodayCare([])
+    async getUpcomingCare(days) {
+      calls.push(`getUpcomingCare:${days}`)
+      return createUpcomingCare([])
     },
     async recordWatering() {
       throw createApiError('server')
     },
   }
 
-  const state = module.useTodayCare({ wateringApiClient: apiClient, autoLoad: false })
+  const state = module.useUpcomingCare({ wateringApiClient: apiClient, autoLoad: false })
 
-  assert.equal(state.todayCare.value, null)
+  assert.equal(state.upcomingCare.value, null)
+  assert.equal(state.sections.value.length, 0)
   assert.equal(state.items.value.length, 0)
   assert.equal(state.isEmpty.value, false)
 
-  await state.loadTodayCare()
+  await state.loadUpcomingCare()
 
-  assert.deepEqual(calls, ['getTodayCare'])
-  assert.deepEqual(state.todayCare.value, createTodayCare([]))
+  assert.deepEqual(calls, ['getUpcomingCare:3'])
+  assert.deepEqual(state.upcomingCare.value, createUpcomingCare([]))
+  assert.deepEqual(state.sections.value, createUpcomingCare([]).sections)
   assert.deepEqual(state.items.value, [])
   assert.equal(state.isEmpty.value, true)
   assert.equal(state.error.value, null)
   assert.equal(state.isLoading.value, false)
 })
 
-test('useTodayCare clears protected data on auth and forbidden load failures only', async () => {
+test('useUpcomingCare clears protected data on auth and forbidden load failures only', async () => {
   for (const protectedErrorType of ['auth', 'forbidden']) {
-    const { module } = await loadTodayCareComposableModule()
-    const protectedCare = createTodayCare([createCareItem()])
+    const { module } = await loadUpcomingCareComposableModule()
+    const protectedCare = createUpcomingCare([createCareItem()])
     const responses = [
       () => protectedCare,
       () => {
@@ -148,30 +167,30 @@ test('useTodayCare clears protected data on auth and forbidden load failures onl
       },
     ]
     const apiClient = {
-      async getTodayCare() {
+      async getUpcomingCare() {
         return responses.shift()()
       },
       async recordWatering() {
         throw createApiError('server')
       },
     }
-    const state = module.useTodayCare({ wateringApiClient: apiClient, autoLoad: false })
+    const state = module.useUpcomingCare({ wateringApiClient: apiClient, autoLoad: false })
 
-    await state.loadTodayCare()
-    await state.loadTodayCare()
+    await state.loadUpcomingCare()
+    await state.loadUpcomingCare()
 
-    assert.deepEqual(state.todayCare.value, protectedCare)
+    assert.deepEqual(state.upcomingCare.value, protectedCare)
     assert.equal(state.error.value.type, 'network')
 
-    await state.loadTodayCare()
+    await state.loadUpcomingCare()
 
-    assert.equal(state.todayCare.value, null)
+    assert.equal(state.upcomingCare.value, null)
     assert.equal(state.error.value.type, protectedErrorType)
   }
 })
 
-test('useTodayCare records watering with per-plant recording state and refetches today care', async () => {
-  const { module } = await loadTodayCareComposableModule()
+test('useUpcomingCare records watering with per-plant recording state and refetches upcoming care', async () => {
+  const { module } = await loadUpcomingCareComposableModule()
   const calls = []
   let resolveRecord
   const recordPromise = new Promise((resolve) => {
@@ -194,16 +213,16 @@ test('useTodayCare records watering with per-plant recording state and refetches
     },
   }
   const apiClient = {
-    async getTodayCare() {
-      calls.push('getTodayCare')
-      return createTodayCare([])
+    async getUpcomingCare(days) {
+      calls.push(`getUpcomingCare:${days}`)
+      return createUpcomingCare([])
     },
     async recordWatering(plantId) {
       calls.push(`recordWatering:${plantId}`)
       return recordPromise
     },
   }
-  const state = module.useTodayCare({ wateringApiClient: apiClient, autoLoad: false })
+  const state = module.useUpcomingCare({ wateringApiClient: apiClient, autoLoad: false })
 
   const resultPromise = state.recordWatering(7)
 
@@ -213,15 +232,15 @@ test('useTodayCare records watering with per-plant recording state and refetches
   const result = await resultPromise
 
   assert.deepEqual(result, createResult)
-  assert.deepEqual(calls, ['recordWatering:7', 'getTodayCare'])
+  assert.deepEqual(calls, ['recordWatering:7', 'getUpcomingCare:3'])
   assert.equal(state.isRecordingByPlantId.value[7], false)
   assert.equal(state.recordingError.value, null)
   assert.equal(state.successMessage.value, '水やりを記録しました。')
   assert.equal(state.isEmpty.value, true)
 })
 
-test('useTodayCare ignores duplicate watering submits for the same plant while pending', async () => {
-  const { module } = await loadTodayCareComposableModule()
+test('useUpcomingCare ignores duplicate watering submits for the same plant while pending', async () => {
+  const { module } = await loadUpcomingCareComposableModule()
   const calls = []
   let resolveRecord
   const recordPromise = new Promise((resolve) => {
@@ -244,16 +263,16 @@ test('useTodayCare ignores duplicate watering submits for the same plant while p
     },
   }
   const apiClient = {
-    async getTodayCare() {
-      calls.push('getTodayCare')
-      return createTodayCare([])
+    async getUpcomingCare(days) {
+      calls.push(`getUpcomingCare:${days}`)
+      return createUpcomingCare([])
     },
     async recordWatering(plantId) {
       calls.push(`recordWatering:${plantId}`)
       return recordPromise
     },
   }
-  const state = module.useTodayCare({ wateringApiClient: apiClient, autoLoad: false })
+  const state = module.useUpcomingCare({ wateringApiClient: apiClient, autoLoad: false })
 
   const firstResultPromise = state.recordWatering(7)
   const duplicateResult = await state.recordWatering(7)
@@ -266,61 +285,61 @@ test('useTodayCare ignores duplicate watering submits for the same plant while p
   const firstResult = await firstResultPromise
 
   assert.deepEqual(firstResult, createResult)
-  assert.deepEqual(calls, ['recordWatering:7', 'getTodayCare'])
+  assert.deepEqual(calls, ['recordWatering:7', 'getUpcomingCare:3'])
   assert.equal(state.isRecordingByPlantId.value[7], false)
 })
 
-test('useTodayCare keeps record failures distinct from load failures and preserves retry data', async () => {
-  const { module } = await loadTodayCareComposableModule()
-  const protectedCare = createTodayCare([createCareItem()])
+test('useUpcomingCare keeps record failures distinct from load failures and preserves retry data', async () => {
+  const { module } = await loadUpcomingCareComposableModule()
+  const protectedCare = createUpcomingCare([createCareItem()])
   const apiClient = {
-    async getTodayCare() {
+    async getUpcomingCare() {
       return protectedCare
     },
     async recordWatering() {
       throw createApiError('network')
     },
   }
-  const state = module.useTodayCare({ wateringApiClient: apiClient, autoLoad: false })
+  const state = module.useUpcomingCare({ wateringApiClient: apiClient, autoLoad: false })
 
-  await state.loadTodayCare()
+  await state.loadUpcomingCare()
   const result = await state.recordWatering(7)
 
   assert.equal(result, null)
-  assert.deepEqual(state.todayCare.value, protectedCare)
+  assert.deepEqual(state.upcomingCare.value, protectedCare)
   assert.equal(state.error.value, null)
   assert.equal(state.recordingError.value.type, 'network')
   assert.equal(state.successMessage.value, null)
   assert.equal(state.isRecordingByPlantId.value[7], false)
 })
 
-test('useTodayCare clears protected data on auth or forbidden record failures', async () => {
-  const { module } = await loadTodayCareComposableModule()
-  const protectedCare = createTodayCare([createCareItem()])
+test('useUpcomingCare clears protected data on auth or forbidden record failures', async () => {
+  const { module } = await loadUpcomingCareComposableModule()
+  const protectedCare = createUpcomingCare([createCareItem()])
   const apiClient = {
-    async getTodayCare() {
+    async getUpcomingCare() {
       return protectedCare
     },
     async recordWatering() {
       throw createApiError('forbidden')
     },
   }
-  const state = module.useTodayCare({ wateringApiClient: apiClient, autoLoad: false })
+  const state = module.useUpcomingCare({ wateringApiClient: apiClient, autoLoad: false })
 
-  await state.loadTodayCare()
+  await state.loadUpcomingCare()
   await state.recordWatering(7)
 
-  assert.equal(state.todayCare.value, null)
+  assert.equal(state.upcomingCare.value, null)
   assert.equal(state.recordingError.value.type, 'forbidden')
 })
 
-test('useTodayCare composes the authenticated watering client and stays within the frontend boundary', async () => {
+test('useUpcomingCare composes the authenticated watering client and stays within the frontend boundary', async () => {
   const [{ module, mountedCallbacks, factoryCalls }, source] = await Promise.all([
-    loadTodayCareComposableModule(),
-    readSource('../src/composables/useTodayCare.ts'),
+    loadUpcomingCareComposableModule(),
+    readSource('../src/composables/useUpcomingCare.ts'),
   ])
 
-  const state = module.useTodayCare()
+  const state = module.useUpcomingCare()
 
   assert.equal(factoryCalls.length, 1)
   assert.equal(mountedCallbacks.length, 1)

@@ -1,14 +1,14 @@
 import type { AuthenticatedApiClient } from '../types/api'
 import type {
   PlantWateringDetail,
-  TodayCare,
+  UpcomingCare,
   WateringHeatmap,
   WateringHeatmapRange,
   WateringRecordCreateResult,
 } from '../types/watering'
 
 export interface WateringApiClient {
-  getTodayCare(): Promise<TodayCare>
+  getUpcomingCare(days?: number): Promise<UpcomingCare>
   getPlantWatering(plantId: number): Promise<PlantWateringDetail>
   recordWatering(plantId: number): Promise<WateringRecordCreateResult>
   getWateringHeatmap(range: WateringHeatmapRange): Promise<WateringHeatmap>
@@ -16,8 +16,13 @@ export interface WateringApiClient {
 
 export function createWateringApiClient(apiClient: AuthenticatedApiClient): WateringApiClient {
   return {
-    getTodayCare(): Promise<TodayCare> {
-      return apiClient.request<TodayCare>('/care/today')
+    getUpcomingCare(days?: number): Promise<UpcomingCare> {
+      if (days === undefined) {
+        return apiClient.request<UpcomingCare>('/care/upcoming')
+      }
+
+      const params = new URLSearchParams({ days: String(days) })
+      return apiClient.request<UpcomingCare>(`/care/upcoming?${params.toString()}`)
     },
 
     getPlantWatering(plantId: number): Promise<PlantWateringDetail> {

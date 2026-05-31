@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ApiError } from '../../types/api'
-import type { TodayCareItem } from '../../types/watering'
+import type { UpcomingCareItem } from '../../types/watering'
 import WateringActionButton from './WateringActionButton.vue'
 
 withDefaults(
   defineProps<{
-    items: TodayCareItem[]
+    items: UpcomingCareItem[]
     isLoading: boolean
     error: ApiError | null
     recordingError: ApiError | null
@@ -60,7 +60,7 @@ function recordingErrorMessage(error: ApiError): string {
   }
 }
 
-function dueStatusLabel(item: TodayCareItem): string {
+function dueStatusLabel(item: UpcomingCareItem): string {
   switch (item.dueStatus) {
     case 'unrecorded':
       return '未記録'
@@ -73,7 +73,7 @@ function dueStatusLabel(item: TodayCareItem): string {
   }
 }
 
-function dueStatusHelp(item: TodayCareItem): string {
+function dueStatusHelp(item: UpcomingCareItem): string {
   switch (item.dueStatus) {
     case 'unrecorded':
       return 'まだ水やり記録がありません。今日の水やりから始めましょう。'
@@ -86,7 +86,7 @@ function dueStatusHelp(item: TodayCareItem): string {
   }
 }
 
-function dueStatusClasses(item: TodayCareItem): string[] {
+function dueStatusClasses(item: UpcomingCareItem): string[] {
   const baseClasses = [
     'inline-flex',
     'w-fit',
@@ -115,7 +115,7 @@ function formatDate(value: string): string {
   return `${Number(match.groups.month)}月${Number(match.groups.day)}日`
 }
 
-function lastWateredLabel(item: TodayCareItem): string {
+function lastWateredLabel(item: UpcomingCareItem): string {
   if (!item.lastWateredAt) {
     return 'まだ水やり記録がありません'
   }
@@ -123,7 +123,7 @@ function lastWateredLabel(item: TodayCareItem): string {
   return `${formatDate(item.lastWateredAt)}に記録`
 }
 
-function nextWateringLabel(item: TodayCareItem): string {
+function nextWateringLabel(item: UpcomingCareItem): string {
   if (!item.nextWateringDate) {
     return '未確定'
   }

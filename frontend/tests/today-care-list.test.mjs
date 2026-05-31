@@ -9,8 +9,8 @@ test('TodayCareList exposes presentational props and emits without API or auth d
 
   assert.match(source, /import\s+WateringActionButton\s+from\s+['"]\.\/WateringActionButton\.vue['"]/)
   assert.match(source, /import\s+type\s+\{\s*ApiError\s*\}\s+from\s+['"]\.\.\/\.\.\/types\/api['"]/)
-  assert.match(source, /import\s+type\s+\{\s*TodayCareItem\s*\}\s+from\s+['"]\.\.\/\.\.\/types\/watering['"]/)
-  assert.match(source, /items:\s*TodayCareItem\[\]/)
+  assert.match(source, /import\s+type\s+\{\s*UpcomingCareItem\s*\}\s+from\s+['"]\.\.\/\.\.\/types\/watering['"]/)
+  assert.match(source, /items:\s*UpcomingCareItem\[\]/)
   assert.match(source, /isLoading:\s*boolean/)
   assert.match(source, /error:\s*ApiError\s*\|\s*null/)
   assert.match(source, /recordingError:\s*ApiError\s*\|\s*null/)
