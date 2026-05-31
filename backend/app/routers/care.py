@@ -10,8 +10,12 @@ from app.auth.types import CurrentUser
 from app.db.session import get_session
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.watering_repository import WateringRepository
-from app.schemas.watering import TodayCareRead, WateringHeatmapRead
-from app.services.watering_service import WateringHeatmapRangeError, WateringService
+from app.schemas.watering import UpcomingCareRead, WateringHeatmapRead
+from app.services.watering_service import (
+    UpcomingCareDaysError,
+    WateringHeatmapRangeError,
+    WateringService,
+)
 
 router = APIRouter(prefix="/care", tags=["care"])
 
@@ -25,12 +29,19 @@ def get_watering_service(
     )
 
 
-@router.get("/today", response_model=TodayCareRead)
-def get_today_care(
+@router.get("/upcoming", response_model=UpcomingCareRead)
+def get_upcoming_care(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     service: Annotated[WateringService, Depends(get_watering_service)],
-) -> TodayCareRead:
-    return service.get_today_care(current_user.id)
+    days: Annotated[int, Query(ge=1, le=14)] = 1,
+) -> UpcomingCareRead:
+    try:
+        return service.get_upcoming_care(current_user.id, days=days)
+    except UpcomingCareDaysError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get("/watering-heatmap", response_model=WateringHeatmapRead)

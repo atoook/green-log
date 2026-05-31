@@ -196,7 +196,7 @@
     - _Boundary: Completion verification_
 
 - [ ] 9. 直近のお世話予定を `/care/upcoming` に置き換える
-  - [ ] 9.1 `/care/upcoming` の backend contract と予定計算を追加する
+  - [x] 9.1 `/care/upcoming` の backend contract と予定計算を追加する
     - 今日を含む取得日数として `days` を扱い、未指定では今日のみ、`days=3` では今日・明日・明後日を対象にする。
     - 今日 section には未記録、期限超過、今日予定の植物を含め、明日以降は次回水やり予定日が対象日に一致する植物だけを含める。
     - 予定は日付別 section として返し、各 section が空でもその日に必要な水やりがないことを UI で判断できる response にする。

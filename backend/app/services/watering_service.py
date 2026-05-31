@@ -8,8 +8,10 @@ from app.repositories.watering_repository import WateringRepository
 from app.schemas.watering import (
     PlantWateringDetailRead,
     PlantWateringStateRead,
-    TodayCareItemRead,
-    TodayCareRead,
+    UpcomingCareItemRead,
+    UpcomingCareRead,
+    UpcomingCareSectionKind,
+    UpcomingCareSectionRead,
     WateringHeatmapDayRead,
     WateringHeatmapPlantRead,
     WateringHeatmapRead,
@@ -21,6 +23,8 @@ from app.schemas.watering import (
 
 DEFAULT_HEATMAP_LOOKBACK_DAYS = 90
 MAX_HEATMAP_RANGE_DAYS = 366
+MIN_UPCOMING_CARE_DAYS = 1
+MAX_UPCOMING_CARE_DAYS = 14
 APP_TIMEZONE = ZoneInfo("Asia/Tokyo")
 
 
@@ -29,6 +33,10 @@ class WateringPlantNotFoundError(LookupError):
 
 
 class WateringHeatmapRangeError(ValueError):
+    pass
+
+
+class UpcomingCareDaysError(ValueError):
     pass
 
 
@@ -53,17 +61,32 @@ class WateringService:
         self.today_provider = today_provider
         self.now_provider = now_provider
 
-    def get_today_care(self, owner_user_id: str) -> TodayCareRead:
+    def get_upcoming_care(self, owner_user_id: str, days: int = 1) -> UpcomingCareRead:
+        if days < MIN_UPCOMING_CARE_DAYS or days > MAX_UPCOMING_CARE_DAYS:
+            raise UpcomingCareDaysError("Upcoming care days must be between 1 and 14")
+
         today = self.today_provider()
-        items: list[TodayCareItemRead] = []
+        sections = [
+            UpcomingCareSectionRead(
+                date=today + timedelta(days=offset),
+                kind=_upcoming_section_kind(offset),
+                items=[],
+            )
+            for offset in range(days)
+        ]
+        sections_by_date = {section.date: section for section in sections}
+
         for plant in self.plant_repository.list(owner_user_id):
             state = self._build_state(plant, today)
             if state.is_due_today:
-                items.append(self._build_today_care_item(plant, state))
-        return TodayCareRead(today=today, items=items)
+                sections[0].items.append(self._build_upcoming_care_item(plant, state))
+                continue
+            if state.next_watering_date in sections_by_date:
+                sections_by_date[state.next_watering_date].items.append(
+                    self._build_upcoming_care_item(plant, state),
+                )
 
-    def list_today_care(self, owner_user_id: str) -> TodayCareRead:
-        return self.get_today_care(owner_user_id)
+        return UpcomingCareRead(start_date=today, days=days, sections=sections)
 
     def get_watering_heatmap(
         self,
@@ -199,12 +222,12 @@ class WateringService:
             )
         return start_date, end_date
 
-    def _build_today_care_item(
+    def _build_upcoming_care_item(
         self,
         plant: Plant,
         state: PlantWateringStateRead,
-    ) -> TodayCareItemRead:
-        return TodayCareItemRead(
+    ) -> UpcomingCareItemRead:
+        return UpcomingCareItemRead(
             plant_id=state.plant_id,
             last_watered_at=state.last_watered_at,
             next_watering_date=state.next_watering_date,
@@ -290,6 +313,16 @@ def _date_range(start_date: date, end_date: date) -> list[date]:
 
 def _heatmap_level(plant_count: int) -> int:
     return min(plant_count, 4)
+
+
+def _upcoming_section_kind(offset: int) -> UpcomingCareSectionKind:
+    if offset == 0:
+        return "today"
+    if offset == 1:
+        return "tomorrow"
+    if offset == 2:
+        return "day_after_tomorrow"
+    return "future"
 
 
 def _require_id(value: int | None) -> int:

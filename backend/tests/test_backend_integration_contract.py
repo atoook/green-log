@@ -43,7 +43,7 @@ def test_main_app_registers_webhook_and_protected_plant_care_routers():
         for method in route.methods
     }
     expected_watering_routes = {
-        ("GET", "/care/today"),
+        ("GET", "/care/upcoming"),
         ("GET", "/care/watering-heatmap"),
         ("GET", "/plants/{plant_id}/watering"),
         ("POST", "/plants/{plant_id}/watering-records"),
@@ -111,7 +111,7 @@ def test_app_level_watering_routes_require_auth_and_keep_data_private(
         plant_id = plant.id
 
     responses = [
-        api_client.get("/care/today"),
+        api_client.get("/care/upcoming"),
         api_client.get(f"/plants/{plant_id}/watering"),
         api_client.post(f"/plants/{plant_id}/watering-records", json={}),
     ]

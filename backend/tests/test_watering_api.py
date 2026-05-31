@@ -138,7 +138,7 @@ def test_record_watering_route_creates_record_and_retrieved_state_matches(
     assert _as_api_datetime(plant.last_watered_at) == record["wateredAt"]
 
 
-def test_app_watering_flow_keeps_today_detail_record_and_storage_consistent(
+def test_app_watering_flow_keeps_upcoming_detail_record_and_storage_consistent(
     api_client,
     override_current_user,
     test_engine,
@@ -155,17 +155,17 @@ def test_app_watering_flow_keeps_today_detail_record_and_storage_consistent(
     assert create_plant_response.status_code == 201
     plant_id = create_plant_response.json()["id"]
 
-    today_before_response = api_client.get("/care/today")
+    today_before_response = api_client.get("/care/upcoming")
     detail_before_response = api_client.get(f"/plants/{plant_id}/watering")
 
     assert today_before_response.status_code == 200
     assert detail_before_response.status_code == 200
     today_before = today_before_response.json()
     detail_before = detail_before_response.json()
-    assert [item["plantId"] for item in today_before["items"]] == [plant_id]
-    assert today_before["items"][0]["dueStatus"] == "unrecorded"
-    assert today_before["items"][0]["lastWateredAt"] is None
-    assert today_before["items"][0]["nextWateringDate"] is None
+    assert [item["plantId"] for item in today_before["sections"][0]["items"]] == [plant_id]
+    assert today_before["sections"][0]["items"][0]["dueStatus"] == "unrecorded"
+    assert today_before["sections"][0]["items"][0]["lastWateredAt"] is None
+    assert today_before["sections"][0]["items"][0]["nextWateringDate"] is None
     assert detail_before == {
         "plantId": plant_id,
         "lastWateredAt": None,
@@ -196,14 +196,18 @@ def test_app_watering_flow_keeps_today_detail_record_and_storage_consistent(
     assert_no_owner_fields(created)
 
     detail_after_response = api_client.get(f"/plants/{plant_id}/watering")
-    today_after_response = api_client.get("/care/today")
+    today_after_response = api_client.get("/care/upcoming")
 
     assert detail_after_response.status_code == 200
     assert today_after_response.status_code == 200
     detail_after = detail_after_response.json()
     today_after = today_after_response.json()
     assert detail_after == state
-    assert plant_id not in [item["plantId"] for item in today_after["items"]]
+    assert plant_id not in [
+        item["plantId"]
+        for section in today_after["sections"]
+        for item in section["items"]
+    ]
 
     with Session(test_engine) as session:
         plant = session.get(Plant, plant_id)

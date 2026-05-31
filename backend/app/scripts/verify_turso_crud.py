@@ -118,10 +118,11 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
         if initial_watering.history:
             raise RuntimeError("New smoke plant unexpectedly had watering history")
 
-        initial_today_care = watering_service.get_today_care(smoke_user.id)
+        initial_upcoming_care = watering_service.get_upcoming_care(smoke_user.id)
         if not any(
             item.plant_id == created.id and item.due_status == "unrecorded"
-            for item in initial_today_care.items
+            for section in initial_upcoming_care.sections
+            for item in section.items
         ):
             raise RuntimeError("Unwatered smoke plant was not listed in today's care")
 
@@ -152,7 +153,7 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
         session.commit()
 
         watering_detail = watering_service.get_plant_watering(smoke_user.id, created.id)
-        today_care_after_record = watering_service.get_today_care(smoke_user.id)
+        upcoming_care_after_record = watering_service.get_upcoming_care(smoke_user.id)
         watered_on = watered_at.astimezone(APP_TIMEZONE).date()
         heatmap = watering_service.get_watering_heatmap(
             smoke_user.id,
@@ -181,7 +182,11 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
         raise RuntimeError("Watering detail did not include the created record in history")
     if watering_detail.history[0].id != watering_result.record.id:
         raise RuntimeError("Watering history did not return the newest created record first")
-    if any(item.plant_id == created.id for item in today_care_after_record.items):
+    if any(
+        item.plant_id == created.id
+        for section in upcoming_care_after_record.sections
+        for item in section.items
+    ):
         raise RuntimeError("Freshly watered smoke plant was still listed in today's care")
     if heatmap.start_date != watered_on or heatmap.end_date != watered_on:
         raise RuntimeError("Watering heatmap did not use the requested smoke record date")
