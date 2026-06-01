@@ -17,6 +17,7 @@ class Plant(SQLModel, table=True):
             "owner_user_id",
             "last_watered_at",
         ),
+        sa.Index("ix_plants_cover_photo_id", "cover_photo_id"),
     )
 
     id: int | None = Field(default=None, primary_key=True)
@@ -30,7 +31,7 @@ class Plant(SQLModel, table=True):
     name: str = Field(index=True, nullable=False)
     acquired_date: date | None = Field(default=None)
     memo: str | None = Field(default=None)
-    image_url: str | None = Field(default=None)
+    cover_photo_id: int | None = Field(default=None, nullable=True)
     watering_cycle_days: int = Field(nullable=False)
     last_watered_at: datetime | None = Field(default=None, nullable=True)
     created_at: datetime = Field(default_factory=utc_now, nullable=False)
