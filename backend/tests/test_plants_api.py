@@ -32,7 +32,7 @@ def test_create_and_read_plant(protected_client):
     assert created["name"] == "リビングのモンステラ"
     assert created["acquiredDate"] == "2026-05-28"
     assert created["memo"] == "窓際に置いている"
-    assert created["imageUrl"] == "https://example.com/monstera.jpg"
+    assert created["imageUrl"] is None
     assert created["wateringCycleDays"] == 7
     assert "ownerUserId" not in created
     assert "owner_user_id" not in created
@@ -104,6 +104,7 @@ def test_owner_separation_flow_hides_owner_and_preserves_other_user_row(
     with Session(test_engine) as session:
         plant_before = session.get(Plant, first_a["id"])
         assert plant_before is not None
+        assert not hasattr(plant_before, "image_url")
         before_snapshot = {
             "owner_user_id": plant_before.owner_user_id,
             "name": plant_before.name,
@@ -214,6 +215,30 @@ def test_repository_timestamp_and_optional_fields_round_trip(protected_client):
     assert payload["updatedAt"].endswith("Z")
 
 
+def test_create_plant_ignores_legacy_image_url_input(protected_client, test_engine):
+    client = protected_client()
+
+    response = client.post(
+        "/plants",
+        json={
+            "name": "画像入力を無視するポトス",
+            "imageUrl": "https://example.com/legacy.jpg",
+            "wateringCycleDays": 7,
+        },
+    )
+
+    assert response.status_code == 201
+    created = response.json()
+    assert created["imageUrl"] is None
+
+    with Session(test_engine) as session:
+        plant = session.get(Plant, created["id"])
+
+    assert plant is not None
+    assert plant.cover_photo_id is None
+    assert not hasattr(plant, "image_url")
+
+
 def test_plant_routes_require_authentication(api_client):
     client = api_client
 
@@ -277,7 +302,7 @@ def test_valid_current_user_reaches_plant_service_with_internal_user_id(
                 name=payload.name,
                 acquired_date=payload.acquired_date,
                 memo=payload.memo,
-                image_url=payload.image_url,
+                image_url=None,
                 watering_cycle_days=payload.watering_cycle_days,
                 created_at=now,
                 updated_at=now,

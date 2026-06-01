@@ -33,7 +33,7 @@ class PlantService:
             created_at=now,
             updated_at=now,
         )
-        return _plant_to_read(self.repository.create(plant), image_url=payload.image_url)
+        return _plant_to_read(self.repository.create(plant), image_url=None)
 
     def list_plants(self, owner_user_id: str) -> list[PlantRead]:
         return [
