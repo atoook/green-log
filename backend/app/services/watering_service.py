@@ -76,14 +76,25 @@ class WateringService:
         ]
         sections_by_date = {section.date: section for section in sections}
 
-        for plant in self.plant_repository.list(owner_user_id):
+        for row in self.plant_repository.list_with_cover_image(owner_user_id):
+            plant = row.plant
             state = self._build_state(plant, today)
             if state.is_due_today:
-                sections[0].items.append(self._build_upcoming_care_item(plant, state))
+                sections[0].items.append(
+                    self._build_upcoming_care_item(
+                        plant,
+                        state,
+                        image_url=row.cover_image_url,
+                    )
+                )
                 continue
             if state.next_watering_date in sections_by_date:
                 sections_by_date[state.next_watering_date].items.append(
-                    self._build_upcoming_care_item(plant, state),
+                    self._build_upcoming_care_item(
+                        plant,
+                        state,
+                        image_url=row.cover_image_url,
+                    ),
                 )
 
         return UpcomingCareRead(start_date=today, days=days, sections=sections)
@@ -226,6 +237,8 @@ class WateringService:
         self,
         plant: Plant,
         state: PlantWateringStateRead,
+        *,
+        image_url: str | None,
     ) -> UpcomingCareItemRead:
         return UpcomingCareItemRead(
             plant_id=state.plant_id,
@@ -237,7 +250,7 @@ class WateringService:
                 id=_require_id(plant.id),
                 name=plant.name,
                 acquired_date=plant.acquired_date,
-                image_url=getattr(plant, "image_url", None),
+                image_url=image_url,
                 watering_cycle_days=plant.watering_cycle_days,
             ),
         )
