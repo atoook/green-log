@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import timezone
 
 from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -99,11 +100,14 @@ def test_verify_plant_crud_uses_application_user_upsert(monkeypatch):
     assert smoke_records[0].plant_id == smoke_plants[0].id
     assert other_records[0].watered_at.date() == smoke_records[0].watered_at.date()
     assert smoke_plants[0].last_watered_at == smoke_records[0].watered_at
+    smoke_record_date = smoke_records[0].watered_at.replace(tzinfo=timezone.utc).astimezone(
+        verify_turso_crud.APP_TIMEZONE
+    ).date().isoformat()
     assert observed_heatmap_reads == [
         (
             smoke_users[0].id,
-            smoke_records[0].watered_at.date().isoformat(),
-            smoke_records[0].watered_at.date().isoformat(),
+            smoke_record_date,
+            smoke_record_date,
         )
     ]
 
