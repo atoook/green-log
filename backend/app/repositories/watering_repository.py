@@ -54,6 +54,28 @@ class WateringRepository:
 
         return list(self.session.exec(statement).all())
 
+    def exists_for_plant_between(
+        self,
+        owner_user_id: str,
+        plant_id: int,
+        start_at: datetime,
+        end_exclusive: datetime,
+    ) -> bool:
+        if not self._plant_is_owned(owner_user_id, plant_id):
+            return False
+
+        statement = (
+            select(WateringRecord.id)
+            .where(
+                WateringRecord.owner_user_id == owner_user_id,
+                WateringRecord.plant_id == plant_id,
+                WateringRecord.watered_at >= start_at,
+                WateringRecord.watered_at < end_exclusive,
+            )
+            .limit(1)
+        )
+        return self.session.exec(statement).first() is not None
+
     def list_for_heatmap(
         self,
         owner_user_id: str,

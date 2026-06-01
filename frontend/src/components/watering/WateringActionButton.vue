@@ -6,11 +6,13 @@ const props = withDefaults(
     isRecording: boolean
     disabled?: boolean
     hasError?: boolean
+    alreadyRecordedToday?: boolean
     wasSuccessful?: boolean
   }>(),
   {
     disabled: false,
     hasError: false,
+    alreadyRecordedToday: false,
     wasSuccessful: false,
   },
 )
@@ -20,11 +22,16 @@ const emit = defineEmits<{
 }>()
 
 const localPending = ref(false)
-const isButtonDisabled = computed(() => props.disabled || props.isRecording || localPending.value)
+const isButtonDisabled = computed(
+  () => props.disabled || props.alreadyRecordedToday || props.isRecording || localPending.value,
+)
 
 const buttonLabel = computed(() => {
   if (props.isRecording || localPending.value) {
     return '記録しています'
+  }
+  if (props.alreadyRecordedToday) {
+    return '今日は記録済み'
   }
   if (props.wasSuccessful) {
     return '記録しました'
@@ -41,6 +48,9 @@ const statusMessage = computed(() => {
   }
   if (props.wasSuccessful) {
     return '水やりを記録しました'
+  }
+  if (props.alreadyRecordedToday) {
+    return '今日はすでに水やりを記録しています。'
   }
   if (props.hasError) {
     return '記録できませんでした。もう一度お試しください。'

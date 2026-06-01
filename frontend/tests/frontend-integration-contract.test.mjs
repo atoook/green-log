@@ -77,7 +77,7 @@ test('frontend PlantCreateInput mirrors backend public create schema without own
 })
 
 function extractBackendCreateFields(source) {
-  const block = source.match(/class PlantCreate\(SQLModel\):(?<body>[\s\S]*?)\n\nclass PlantRead/)
+  const block = source.match(/class PlantCreate\(SQLModel\):(?<body>[\s\S]*?)\n\nclass PlantUpdate/)
     ?.groups.body
   assert.ok(block, 'PlantCreate schema block must be present')
 

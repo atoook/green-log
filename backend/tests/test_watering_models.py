@@ -59,6 +59,7 @@ def test_watering_detail_schema_represents_unrecorded_plant_without_owner_fields
         last_watered_at=None,
         next_watering_date=None,
         is_due_today=True,
+        has_watered_today=False,
         due_status="unrecorded",
         history=[],
     )
@@ -70,6 +71,7 @@ def test_watering_detail_schema_represents_unrecorded_plant_without_owner_fields
         "lastWateredAt": None,
         "nextWateringDate": None,
         "isDueToday": True,
+        "hasWateredToday": False,
         "dueStatus": "unrecorded",
         "history": [],
     }
@@ -83,6 +85,7 @@ def test_upcoming_care_schema_serializes_sections_with_camel_case_and_utc_dateti
         last_watered_at=datetime(2026, 5, 23, 9, 30),
         next_watering_date=date(2026, 5, 30),
         is_due_today=True,
+        has_watered_today=False,
         due_status="due_today",
         plant=WateringPlantSummaryRead(
             id=2,
@@ -112,6 +115,7 @@ def test_upcoming_care_schema_serializes_sections_with_camel_case_and_utc_dateti
     assert payload["sections"][0]["kind"] == "today"
     assert payload["sections"][0]["items"][0]["lastWateredAt"] == "2026-05-23T09:30:00Z"
     assert payload["sections"][0]["items"][0]["nextWateringDate"] == "2026-05-30"
+    assert payload["sections"][0]["items"][0]["hasWateredToday"] is False
     assert payload["sections"][0]["items"][0]["dueStatus"] == "due_today"
     assert payload["sections"][0]["items"][0]["plant"] == {
         "id": 2,
@@ -138,6 +142,7 @@ def test_create_result_schema_represents_record_and_history_without_extra_care_t
         last_watered_at=watered_at,
         next_watering_date=date(2026, 6, 6),
         is_due_today=False,
+        has_watered_today=True,
         due_status=None,
         history=[record],
     )
@@ -153,6 +158,7 @@ def test_create_result_schema_represents_record_and_history_without_extra_care_t
     }
     assert payload["state"]["lastWateredAt"] == "2026-05-30T08:00:00Z"
     assert payload["state"]["nextWateringDate"] == "2026-06-06"
+    assert payload["state"]["hasWateredToday"] is True
     assert payload["state"]["history"][0] == payload["record"]
     dumped_text = str(payload)
     assert "owner" not in dumped_text
@@ -167,6 +173,7 @@ def test_watering_schemas_accept_existing_camel_case_validation_aliases():
             "lastWateredAt": None,
             "nextWateringDate": None,
             "isDueToday": True,
+            "hasWateredToday": False,
             "dueStatus": "unrecorded",
         }
     )
@@ -175,6 +182,7 @@ def test_watering_schemas_accept_existing_camel_case_validation_aliases():
     assert state.last_watered_at is None
     assert state.next_watering_date is None
     assert state.is_due_today is True
+    assert state.has_watered_today is False
     assert state.due_status == "unrecorded"
 
 

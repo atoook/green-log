@@ -9,7 +9,11 @@ from app.db.session import get_session
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.watering_repository import WateringRepository
 from app.schemas.watering import PlantWateringDetailRead, WateringRecordCreateResult
-from app.services.watering_service import WateringPlantNotFoundError, WateringService
+from app.services.watering_service import (
+    WateringAlreadyRecordedTodayError,
+    WateringPlantNotFoundError,
+    WateringService,
+)
 
 router = APIRouter(prefix="/plants", tags=["watering"])
 
@@ -50,6 +54,11 @@ def record_watering(
 ) -> WateringRecordCreateResult:
     try:
         return service.record_watering(current_user.id, plant_id)
+    except WateringAlreadyRecordedTodayError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
     except WateringPlantNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

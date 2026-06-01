@@ -13,6 +13,7 @@ export interface PlantWateringState {
   lastWateredAt: string | null
   nextWateringDate: string | null
   isDueToday: boolean
+  hasWateredToday: boolean
   dueStatus: DueStatus | null
 }
 

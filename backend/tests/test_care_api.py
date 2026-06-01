@@ -87,6 +87,7 @@ def test_upcoming_care_route_returns_owned_plants_grouped_by_requested_days(test
 
     assert payload["sections"][0]["items"][0]["dueStatus"] == "unrecorded"
     assert payload["sections"][0]["items"][0]["lastWateredAt"] is None
+    assert payload["sections"][0]["items"][0]["hasWateredToday"] is False
     assert payload["sections"][0]["items"][0]["nextWateringDate"] is None
     assert payload["sections"][0]["items"][0]["plant"]["name"] == "未記録のポトス"
     assert payload["sections"][0]["items"][0]["plant"]["acquiredDate"] == (

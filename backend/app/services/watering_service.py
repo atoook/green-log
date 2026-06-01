@@ -33,6 +33,10 @@ class WateringPlantNotFoundError(LookupError):
     pass
 
 
+class WateringAlreadyRecordedTodayError(ValueError):
+    pass
+
+
 class WateringHeatmapRangeError(ValueError):
     pass
 
@@ -166,6 +170,7 @@ class WateringService:
             last_watered_at=state.last_watered_at,
             next_watering_date=state.next_watering_date,
             is_due_today=state.is_due_today,
+            has_watered_today=state.has_watered_today,
             due_status=state.due_status,
             history=history,
         )
@@ -181,6 +186,16 @@ class WateringService:
             raise WateringPlantNotFoundError("Plant not found")
 
         watered_at = _as_utc_datetime(watered_at or self.now_provider())
+        watered_on = _app_date(watered_at)
+        start_at, end_exclusive = _app_date_range_to_utc(watered_on, watered_on)
+        if self.watering_repository.exists_for_plant_between(
+            owner_user_id,
+            plant_id,
+            start_at,
+            end_exclusive,
+        ):
+            raise WateringAlreadyRecordedTodayError("Watering already recorded today")
+
         record = WateringRecord(
             owner_user_id=owner_user_id,
             plant_id=plant_id,
@@ -246,6 +261,7 @@ class WateringService:
             last_watered_at=state.last_watered_at,
             next_watering_date=state.next_watering_date,
             is_due_today=state.is_due_today,
+            has_watered_today=state.has_watered_today,
             due_status=state.due_status,
             plant=WateringPlantSummaryRead(
                 id=_require_id(plant.id),
@@ -261,6 +277,9 @@ class WateringService:
         next_watering_date: date | None = None
         due_status = None
         is_due_today = False
+        has_watered_today = (
+            last_watered_at is not None and _app_date(last_watered_at) == today
+        )
 
         if last_watered_at is None:
             due_status = "unrecorded"
@@ -283,6 +302,7 @@ class WateringService:
             last_watered_at=last_watered_at,
             next_watering_date=next_watering_date,
             is_due_today=is_due_today,
+            has_watered_today=has_watered_today,
             due_status=due_status,
         )
 

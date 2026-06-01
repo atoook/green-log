@@ -81,6 +81,7 @@ test('WateringActionButton exposes only presentational record action props and e
   assert.match(source, /defineProps<\{[\s\S]*isRecording:\s*boolean/)
   assert.match(source, /disabled\?:\s*boolean/)
   assert.match(source, /hasError\?:\s*boolean/)
+  assert.match(source, /alreadyRecordedToday\?:\s*boolean/)
   assert.match(source, /wasSuccessful\?:\s*boolean/)
   assert.match(source, /defineEmits<\{[\s\S]*record:\s*\[\]/)
   assert.doesNotMatch(source, /fetch\(|createWateringApiClient|useAuthenticatedApi|Clerk|useRouter|useRoute/)
@@ -92,6 +93,7 @@ test('WateringActionButton guards clicks before emitting a single record event',
   const props = {
     disabled: false,
     hasError: false,
+    alreadyRecordedToday: false,
     isRecording: false,
     wasSuccessful: false,
   }
@@ -123,7 +125,7 @@ test('WateringActionButton guards clicks before emitting a single record event',
   assert.match(source, /const\s+localPending\s*=\s*ref\(false\)/)
   assert.match(
     source,
-    /const\s+isButtonDisabled\s*=\s*computed\(\(\)\s*=>\s*props\.disabled\s*\|\|\s*props\.isRecording\s*\|\|\s*localPending\.value\s*\)/,
+    /props\.disabled\s*\|\|\s*props\.alreadyRecordedToday\s*\|\|\s*props\.isRecording\s*\|\|\s*localPending\.value/,
   )
   assert.match(
     source,
@@ -145,6 +147,8 @@ test('WateringActionButton renders normal, pending, success, failure, and disabl
   assert.match(source, /記録しています/)
   assert.match(source, /記録しました/)
   assert.match(source, /もう一度記録する/)
+  assert.match(source, /今日は記録済み/)
+  assert.match(source, /今日はすでに水やりを記録しています/)
   assert.match(source, /記録できませんでした/)
   assert.match(source, /min-h-11/)
   assert.match(source, /aria-live=["']polite["']/)

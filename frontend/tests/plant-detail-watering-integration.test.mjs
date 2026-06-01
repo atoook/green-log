@@ -5,7 +5,7 @@ import { test } from 'node:test'
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
 const outOfScopeDetailUi =
-  /通知|スキップ|延期|カレンダー|お世話種別|編集フォーム|PlantForm|createPlant|updatePlant|deletePlant|Notification|permission|skip|defer|calendar/i
+  /通知|スキップ|延期|カレンダー|お世話種別|Notification|permission|skip|defer|calendar/i
 
 test('PlantDetailPage composes plant basic detail with watering state, action, and history', async () => {
   const source = await readSource('src/pages/PlantDetailPage.vue')
@@ -25,11 +25,11 @@ test('PlantDetailPage composes plant basic detail with watering state, action, a
   assert.match(source, /import\s+\{\s*usePlantWatering\s*\}\s+from\s+['"]\.\.\/composables\/usePlantWatering['"]/)
   assert.match(
     source,
-    /const\s+\{[\s\S]*watering[\s\S]*history[\s\S]*isLoading:\s*isWateringLoading[\s\S]*isRecording[\s\S]*error:\s*wateringError[\s\S]*recordingError[\s\S]*successMessage[\s\S]*loadWatering[\s\S]*recordWatering[\s\S]*\}\s*=\s*usePlantWatering\(plantId\)/,
+    /const\s+\{[\s\S]*watering[\s\S]*history[\s\S]*hasWateredToday[\s\S]*isLoading:\s*isWateringLoading[\s\S]*isRecording[\s\S]*error:\s*wateringError[\s\S]*recordingError[\s\S]*successMessage[\s\S]*loadWatering[\s\S]*recordWatering[\s\S]*\}\s*=\s*usePlantWatering\(plantId\)/,
   )
   assert.match(source, /const\s+hasRecordingError\s*=\s*computed\(\(\)\s*=>\s*recordingError\.value\s*!==\s*null\)/)
   assert.match(source, /const\s+wasWateringSuccessful\s*=\s*computed\(\(\)\s*=>\s*successMessage\.value\s*!==\s*null\)/)
-  assert.match(source, /const\s+isWateringActionDisabled\s*=\s*computed\(\(\)\s*=>\s*!plant\.value\)/)
+  assert.match(source, /const\s+isWateringActionDisabled\s*=\s*computed\(\(\)\s*=>\s*!plant\.value\s*\|\|\s*hasWateredToday\.value\)/)
   assert.match(
     source,
     /async\s+function\s+recordPlantWatering\(\):\s*Promise<void>\s*\{[\s\S]*await\s+recordWatering\(\)/,
@@ -47,7 +47,7 @@ test('PlantDetailPage keeps plant and watering error surfaces separate', async (
   assert.ok(plantDetailTag, 'PlantDetail tag must be present')
   assert.match(
     source,
-    /<PlantDetail\s+:plant=["']plant["']\s+:is-loading=["']isLoading["']\s+:error=["']error["']\s+@back=["']backToList["']\s*\/>/,
+    /<PlantDetail[\s\S]*:plant=["']plant["'][\s\S]*:is-loading=["']isLoading["'][\s\S]*:error=["']error["'][\s\S]*@back=["']backToList["'][\s\S]*@edit=["']startEditing["'][\s\S]*\/>/,
   )
   assert.match(source, /<section\s+v-if=["']plant["'][\s\S]*aria-labelledby=["']plant-watering-title["']/)
   assert.match(
@@ -67,9 +67,9 @@ test('PlantDetailPage wires record success feedback without direct API or out-of
 
   assert.match(
     source,
-    /<WateringActionButton[\s\S]*:is-recording=["']isRecording["'][\s\S]*:disabled=["']isWateringActionDisabled["'][\s\S]*:has-error=["']hasRecordingError["'][\s\S]*:was-successful=["']wasWateringSuccessful["'][\s\S]*@record=["']recordPlantWatering["']/,
+    /<WateringActionButton[\s\S]*:is-recording=["']isRecording["'][\s\S]*:disabled=["']isWateringActionDisabled["'][\s\S]*:has-error=["']hasRecordingError["'][\s\S]*:already-recorded-today=["']hasWateredToday["'][\s\S]*:was-successful=["']wasWateringSuccessful["'][\s\S]*@record=["']recordPlantWatering["']/,
   )
-  assert.match(source, /v-if=["']successMessage["'][\s\S]*aria-live=["']polite["'][\s\S]*\{\{\s*successMessage\s*\}\}/)
+  assert.match(source, /v-if=["']updateSuccessMessage \|\| successMessage["'][\s\S]*aria-live=["']polite["'][\s\S]*\{\{\s*updateSuccessMessage \|\| successMessage\s*\}\}/)
   assert.match(source, /水やりの記録/)
   assert.doesNotMatch(source, /fetch\(|createWateringApiClient|useAuthenticatedApi|Clerk|Authorization|Bearer/)
   assert.doesNotMatch(source, outOfScopeDetailUi)

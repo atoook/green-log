@@ -32,6 +32,8 @@ Plant Watering Care は、観葉植物初心者が植物ごとの水やり忘れ
 4. When 水やり記録が作成される, the Green Mate shall その植物の次回水やり予定日を新しい記録に合わせて表示する
 5. If 水やり記録の作成に失敗する, then the Green Mate shall 記録が完了していないことを表示し、ユーザーが再試行できる状態を維持する
 6. If ユーザーが存在しない植物または利用できない植物に対して水やりを記録しようとする, then the Green Mate shall 対象の植物を利用できないことを表示し、水やり記録を作成しない
+7. If 同じ植物に対して同じ日付基準で水やり記録がすでに存在する, then the Green Mate shall 追加の水やり記録を作成しない
+8. While 同じ植物の水やりが当日すでに記録済みである, the Green Mate shall 水やり記録ボタンを非活性にし、当日記録済みであることが分かるラベルを表示する
 
 ### Requirement 3: 最新水やり日時の表示
 **Objective:** As a 観葉植物初心者, I want 植物ごとに最後に水をあげた日時を確認したい, so that 次に水をあげるべきか判断できる
