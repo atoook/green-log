@@ -97,7 +97,7 @@
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
   - _Boundary: Migration and verification_
 
-- [ ] 5.2 Frontend build を通して型境界を確認する
+- [x] 5.2 Frontend build を通して型境界を確認する
   - Frontend build を実行し、画像URLを作成入力から外した型変更が全画面で整合していることを確認する。
   - 完了時点で、TypeScript build が成功し、植物登録・一覧・詳細の型エラーが残っていない。
   - _Depends: 3.2_
