@@ -9,6 +9,7 @@ defineProps<{
 
 const emit = defineEmits<{
   back: []
+  edit: []
 }>()
 
 function detailErrorMessage(error: ApiError): string {
@@ -54,9 +55,18 @@ function detailErrorMessage(error: ApiError): string {
         植物の写真はまだありません
       </div>
 
-      <div>
-        <p class="text-sm font-semibold text-leaf-700">植物の記録</p>
-        <h1 class="mt-1 text-3xl font-semibold text-stone-950">{{ plant.name }}</h1>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-leaf-700">植物の記録</p>
+          <h1 class="mt-1 break-words text-3xl font-semibold text-stone-950">{{ plant.name }}</h1>
+        </div>
+        <button
+          class="w-full rounded-md border border-leaf-200 px-4 py-2 text-sm font-semibold text-leaf-700 hover:bg-leaf-50 sm:w-auto"
+          type="button"
+          @click="emit('edit')"
+        >
+          編集
+        </button>
       </div>
 
       <dl class="grid gap-3 text-sm">
