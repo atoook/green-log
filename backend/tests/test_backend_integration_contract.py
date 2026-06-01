@@ -64,6 +64,31 @@ def test_main_app_registers_webhook_and_protected_plant_care_routers():
     assert openapi_watering_routes == expected_watering_routes
 
 
+def test_app_does_not_expose_photo_crud_or_internal_photo_fields():
+    openapi = app.openapi()
+    app_paths = set(openapi["paths"])
+    forbidden_path_fragments = (
+        "photo",
+        "upload",
+        "storage",
+        "gallery",
+        "thumbnail",
+    )
+    component_text = str(openapi.get("components", {}))
+
+    assert not any(
+        fragment in path
+        for path in app_paths
+        for fragment in forbidden_path_fragments
+    )
+    assert "coverPhotoId" not in component_text
+    assert "cover_photo_id" not in component_text
+    assert "storageKey" not in component_text
+    assert "storage_key" not in component_text
+    assert "ownerUserId" not in component_text
+    assert "owner_user_id" not in component_text
+
+
 def test_app_level_auth_error_contract_is_401_and_secret_safe(api_client):
     response = api_client.get(
         "/plants",
