@@ -9,7 +9,7 @@
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.6, 6.5_
     - _Boundary: Plant schema, PlantService_
 
-  - [ ] 1.2 owner-scoped な植物更新の永続化を追加する
+  - [x] 1.2 owner-scoped な植物更新の永続化を追加する
     - 認証済み owner id と植物 id の両方に一致する植物だけを更新する。
     - 更新対象は既存の基本情報に限定し、owner、cover photo、最新水やり日時、水やり記録は変更しない。
     - 更新成功時に更新日時が変わり、他 owner の植物は見つからない扱いになる。

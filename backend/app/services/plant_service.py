@@ -47,6 +47,23 @@ class PlantService:
             raise PlantNotFoundError("Plant not found")
         return _row_to_read(plant)
 
+    def update_plant(
+        self,
+        owner_user_id: str,
+        plant_id: int,
+        payload: PlantUpdate,
+    ) -> PlantRead:
+        normalized = self.normalize_update_payload(payload)
+        updated = self.repository.update_profile(
+            owner_user_id=owner_user_id,
+            plant_id=plant_id,
+            payload=normalized,
+            updated_at=utc_now(),
+        )
+        if updated is None:
+            raise PlantNotFoundError("Plant not found")
+        return _row_to_read(updated)
+
     @staticmethod
     def normalize_update_payload(payload: PlantUpdate) -> PlantUpdate:
         normalized: dict[str, str | int | object | None] = {}

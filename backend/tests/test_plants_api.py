@@ -9,9 +9,10 @@ from app.core.config import Settings
 from app.main import app
 from app.models.plant import Plant
 from app.models.plant_photo import PlantPhoto
+from app.repositories.plant_repository import PlantRepository
 from app.routers.plants import get_plant_service
 from app.schemas.plant import PlantRead, PlantUpdate
-from app.services.plant_service import PlantService, PlantValidationError
+from app.services.plant_service import PlantNotFoundError, PlantService, PlantValidationError
 
 
 def test_create_and_read_plant(protected_client):
@@ -369,6 +370,184 @@ def test_plant_update_service_rejects_invalid_domain_values(payload, message):
 def test_plant_update_contract_rejects_invalid_or_out_of_scope_fields(payload):
     with pytest.raises(ValueError):
         PlantUpdate.model_validate(payload)
+
+
+def test_plant_service_updates_only_owned_existing_profile_fields(test_engine):
+    last_watered_at = datetime(2026, 5, 29, 9, 0)
+
+    with Session(test_engine) as session:
+        owned = Plant(
+            owner_user_id="owner-a",
+            name="更新前のポトス",
+            acquired_date=date(2026, 5, 1),
+            memo="古いメモ",
+            watering_cycle_days=7,
+            last_watered_at=last_watered_at,
+        )
+        other = Plant(
+            owner_user_id="owner-b",
+            name="他人のポトス",
+            acquired_date=date(2026, 4, 1),
+            memo="他人のメモ",
+            watering_cycle_days=14,
+        )
+        session.add(owned)
+        session.add(other)
+        session.commit()
+        session.refresh(owned)
+        session.refresh(other)
+        owned_id = owned.id
+        other_id = other.id
+        owned_created_at = owned.created_at
+        previous_updated_at = owned.updated_at
+        other_snapshot = {
+            "owner_user_id": other.owner_user_id,
+            "name": other.name,
+            "acquired_date": other.acquired_date,
+            "memo": other.memo,
+            "watering_cycle_days": other.watering_cycle_days,
+            "last_watered_at": other.last_watered_at,
+            "updated_at": other.updated_at,
+        }
+
+    assert owned_id is not None
+    assert other_id is not None
+
+    with Session(test_engine) as session:
+        service = PlantService(PlantRepository(session))
+        updated = service.update_plant(
+            "owner-a",
+            owned_id,
+            PlantUpdate.model_validate(
+                {
+                    "name": "  更新後のポトス  ",
+                    "acquiredDate": "2026-06-01",
+                    "memo": "  新しいメモ  ",
+                    "wateringCycleDays": 10,
+                }
+            ),
+        )
+
+    assert updated.id == owned_id
+    assert updated.name == "更新後のポトス"
+    assert updated.acquired_date == date(2026, 6, 1)
+    assert updated.memo == "新しいメモ"
+    assert updated.watering_cycle_days == 10
+    assert updated.created_at == owned_created_at
+    assert updated.updated_at > previous_updated_at
+    assert updated.image_url is None
+
+    with Session(test_engine) as session:
+        stored_owned = session.get(Plant, owned_id)
+        stored_other = session.get(Plant, other_id)
+
+    assert stored_owned is not None
+    assert stored_owned.owner_user_id == "owner-a"
+    assert stored_owned.last_watered_at == last_watered_at
+    assert stored_owned.name == "更新後のポトス"
+    assert stored_owned.acquired_date == date(2026, 6, 1)
+    assert stored_owned.memo == "新しいメモ"
+    assert stored_owned.watering_cycle_days == 10
+    assert stored_other is not None
+    assert {
+        "owner_user_id": stored_other.owner_user_id,
+        "name": stored_other.name,
+        "acquired_date": stored_other.acquired_date,
+        "memo": stored_other.memo,
+        "watering_cycle_days": stored_other.watering_cycle_days,
+        "last_watered_at": stored_other.last_watered_at,
+        "updated_at": stored_other.updated_at,
+    } == other_snapshot
+
+
+def test_plant_service_clears_nullable_fields_without_touching_other_fields(test_engine):
+    with Session(test_engine) as session:
+        plant = Plant(
+            owner_user_id="owner-a",
+            name="クリア前の植物",
+            acquired_date=date(2026, 5, 1),
+            memo="消したいメモ",
+            watering_cycle_days=7,
+        )
+        session.add(plant)
+        session.commit()
+        session.refresh(plant)
+        plant_id = plant.id
+        previous_updated_at = plant.updated_at
+
+    assert plant_id is not None
+
+    with Session(test_engine) as session:
+        service = PlantService(PlantRepository(session))
+        updated = service.update_plant(
+            "owner-a",
+            plant_id,
+            PlantUpdate.model_validate({"memo": None, "acquiredDate": None}),
+        )
+
+    assert updated.memo is None
+    assert updated.acquired_date is None
+    assert updated.name == "クリア前の植物"
+    assert updated.watering_cycle_days == 7
+    assert updated.updated_at > previous_updated_at
+
+    with Session(test_engine) as session:
+        stored = session.get(Plant, plant_id)
+
+    assert stored is not None
+    assert stored.memo is None
+    assert stored.acquired_date is None
+    assert stored.name == "クリア前の植物"
+    assert stored.watering_cycle_days == 7
+
+
+def test_plant_service_treats_other_owner_update_as_not_found(test_engine):
+    with Session(test_engine) as session:
+        plant = Plant(
+            owner_user_id="owner-a",
+            name="Aの植物",
+            acquired_date=date(2026, 5, 1),
+            memo="Aのメモ",
+            watering_cycle_days=7,
+        )
+        session.add(plant)
+        session.commit()
+        session.refresh(plant)
+        plant_id = plant.id
+        before_snapshot = {
+            "owner_user_id": plant.owner_user_id,
+            "name": plant.name,
+            "acquired_date": plant.acquired_date,
+            "memo": plant.memo,
+            "watering_cycle_days": plant.watering_cycle_days,
+            "updated_at": plant.updated_at,
+        }
+
+    assert plant_id is not None
+
+    with Session(test_engine) as session:
+        service = PlantService(PlantRepository(session))
+        with pytest.raises(PlantNotFoundError, match="Plant not found"):
+            service.update_plant(
+                "owner-b",
+                plant_id,
+                PlantUpdate.model_validate(
+                    {"name": "乗っ取り更新", "wateringCycleDays": 1}
+                ),
+            )
+
+    with Session(test_engine) as session:
+        stored = session.get(Plant, plant_id)
+
+    assert stored is not None
+    assert {
+        "owner_user_id": stored.owner_user_id,
+        "name": stored.name,
+        "acquired_date": stored.acquired_date,
+        "memo": stored.memo,
+        "watering_cycle_days": stored.watering_cycle_days,
+        "updated_at": stored.updated_at,
+    } == before_snapshot
 
 
 def test_list_and_detail_return_only_owned_cover_photo_url(
