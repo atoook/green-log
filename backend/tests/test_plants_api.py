@@ -550,6 +550,192 @@ def test_plant_service_treats_other_owner_update_as_not_found(test_engine):
     } == before_snapshot
 
 
+def test_patch_plant_updates_owned_profile_and_returns_updated_detail(
+    api_client,
+    override_current_user,
+    test_engine,
+):
+    override_current_user("owner-a")
+    create_response = api_client.post(
+        "/plants",
+        json={
+            "name": "更新前の植物",
+            "acquiredDate": "2026-05-01",
+            "memo": "古いメモ",
+            "wateringCycleDays": 7,
+        },
+    )
+    assert create_response.status_code == 201
+    created = create_response.json()
+
+    patch_response = api_client.patch(
+        f"/plants/{created['id']}",
+        json={
+            "name": "  更新後の植物  ",
+            "acquiredDate": "2026-06-01",
+            "memo": "  新しいメモ  ",
+            "wateringCycleDays": 10,
+        },
+    )
+
+    assert patch_response.status_code == 200
+    updated = patch_response.json()
+    assert updated["id"] == created["id"]
+    assert updated["name"] == "更新後の植物"
+    assert updated["acquiredDate"] == "2026-06-01"
+    assert updated["memo"] == "新しいメモ"
+    assert updated["wateringCycleDays"] == 10
+    assert updated["createdAt"] == created["createdAt"]
+    assert updated["updatedAt"] > created["updatedAt"]
+    assert updated["imageUrl"] is None
+    assert_no_owner_fields(updated)
+
+    detail_response = api_client.get(f"/plants/{created['id']}")
+    assert detail_response.status_code == 200
+    assert detail_response.json()["name"] == "更新後の植物"
+
+    with Session(test_engine) as session:
+        stored = session.get(Plant, created["id"])
+
+    assert stored is not None
+    assert stored.owner_user_id == "owner-a"
+    assert stored.name == "更新後の植物"
+
+
+def test_patch_plant_clears_nullable_fields_and_preserves_unspecified_fields(
+    protected_client,
+):
+    client = protected_client("owner-a")
+    create_response = client.post(
+        "/plants",
+        json={
+            "name": "クリア対象",
+            "acquiredDate": "2026-05-01",
+            "memo": "消えるメモ",
+            "wateringCycleDays": 7,
+        },
+    )
+    assert create_response.status_code == 201
+    created = create_response.json()
+
+    patch_response = client.patch(
+        f"/plants/{created['id']}",
+        json={"memo": None, "acquiredDate": None},
+    )
+
+    assert patch_response.status_code == 200
+    updated = patch_response.json()
+    assert updated["name"] == "クリア対象"
+    assert updated["wateringCycleDays"] == 7
+    assert updated["memo"] is None
+    assert updated["acquiredDate"] is None
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_detail"),
+    [
+        ({"name": "  "}, "植物名"),
+        ({"name": None}, "植物名"),
+        ({"wateringCycleDays": 0}, "水やり周期"),
+        ({"wateringCycleDays": None}, "水やり周期"),
+    ],
+)
+def test_patch_plant_rejects_domain_validation_errors(
+    protected_client,
+    payload,
+    expected_detail,
+):
+    client = protected_client("owner-a")
+    create_response = client.post(
+        "/plants",
+        json={"name": "検証対象", "wateringCycleDays": 7},
+    )
+    assert create_response.status_code == 201
+
+    response = client.patch(f"/plants/{create_response.json()['id']}", json=payload)
+
+    assert response.status_code == 422
+    assert expected_detail in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"acquiredDate": "not-a-date"},
+        {"wateringCycleDays": "毎週"},
+        {"ownerUserId": "attacker"},
+        {"species": "Epipremnum aureum"},
+    ],
+)
+def test_patch_plant_rejects_schema_validation_and_out_of_scope_fields(
+    protected_client,
+    payload,
+):
+    client = protected_client("owner-a")
+    create_response = client.post(
+        "/plants",
+        json={"name": "schema検証対象", "wateringCycleDays": 7},
+    )
+    assert create_response.status_code == 201
+
+    response = client.patch(f"/plants/{create_response.json()['id']}", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_patch_plant_treats_missing_and_other_owner_as_not_found(
+    api_client,
+    override_current_user,
+    test_engine,
+):
+    override_current_user("owner-a")
+    create_response = api_client.post(
+        "/plants",
+        json={"name": "Aの植物", "memo": "Aのメモ", "wateringCycleDays": 7},
+    )
+    assert create_response.status_code == 201
+    plant_id = create_response.json()["id"]
+
+    with Session(test_engine) as session:
+        plant = session.get(Plant, plant_id)
+        assert plant is not None
+        before_snapshot = {
+            "owner_user_id": plant.owner_user_id,
+            "name": plant.name,
+            "memo": plant.memo,
+            "watering_cycle_days": plant.watering_cycle_days,
+            "updated_at": plant.updated_at,
+        }
+
+    missing_response = api_client.patch(
+        "/plants/999",
+        json={"name": "存在しない植物", "wateringCycleDays": 1},
+    )
+
+    override_current_user("owner-b")
+    other_owner_response = api_client.patch(
+        f"/plants/{plant_id}",
+        json={"name": "Bによる更新", "wateringCycleDays": 1},
+    )
+
+    assert missing_response.status_code == 404
+    assert missing_response.json()["detail"] == "Plant not found"
+    assert other_owner_response.status_code == 404
+    assert other_owner_response.json()["detail"] == "Plant not found"
+
+    with Session(test_engine) as session:
+        stored = session.get(Plant, plant_id)
+
+    assert stored is not None
+    assert {
+        "owner_user_id": stored.owner_user_id,
+        "name": stored.name,
+        "memo": stored.memo,
+        "watering_cycle_days": stored.watering_cycle_days,
+        "updated_at": stored.updated_at,
+    } == before_snapshot
+
+
 def test_list_and_detail_return_only_owned_cover_photo_url(
     api_client,
     override_current_user,
@@ -645,6 +831,10 @@ def test_plant_routes_require_authentication(api_client):
         json={"name": "ポトス", "wateringCycleDays": 7},
     ).status_code == 401
     assert client.get("/plants/1").status_code == 401
+    assert client.patch(
+        "/plants/1",
+        json={"name": "ポトス", "wateringCycleDays": 7},
+    ).status_code == 401
 
 
 def test_unauthenticated_plant_routes_do_not_execute_service(api_client):
@@ -663,6 +853,10 @@ def test_unauthenticated_plant_routes_do_not_execute_service(api_client):
             calls.append(f"detail:{owner_user_id}:{plant_id}")
             raise AssertionError("Plant service must not run without current user")
 
+        def update_plant(self, owner_user_id: str, plant_id: int, payload):
+            calls.append(f"update:{owner_user_id}:{plant_id}")
+            raise AssertionError("Plant service must not run without current user")
+
     def fail_if_resolved() -> FailingPlantService:
         calls.append("dependency")
         return FailingPlantService()
@@ -673,9 +867,10 @@ def test_unauthenticated_plant_routes_do_not_execute_service(api_client):
         api_client.get("/plants"),
         api_client.post("/plants", json={"name": "ポトス", "wateringCycleDays": 7}),
         api_client.get("/plants/1"),
+        api_client.patch("/plants/1", json={"name": "ポトス"}),
     ]
 
-    assert [response.status_code for response in responses] == [401, 401, 401]
+    assert [response.status_code for response in responses] == [401, 401, 401, 401]
     assert calls == []
 
 
@@ -718,6 +913,19 @@ def test_valid_current_user_reaches_plant_service_with_internal_user_id(
                 updated_at=now,
             )
 
+        def update_plant(self, owner_user_id: str, plant_id: int, payload) -> PlantRead:
+            calls.append(("update", owner_user_id, plant_id))
+            return PlantRead(
+                id=plant_id,
+                name=payload.name,
+                acquired_date=payload.acquired_date,
+                memo=payload.memo,
+                image_url=None,
+                watering_cycle_days=payload.watering_cycle_days,
+                created_at=now,
+                updated_at=now,
+            )
+
     app.dependency_overrides[get_plant_service] = lambda: SpyPlantService()
 
     assert api_client.get("/plants").status_code == 200
@@ -726,11 +934,16 @@ def test_valid_current_user_reaches_plant_service_with_internal_user_id(
         json={"name": "ポトス", "wateringCycleDays": 7},
     ).status_code == 201
     assert api_client.get("/plants/42").status_code == 200
+    assert api_client.patch(
+        "/plants/42",
+        json={"name": "更新ポトス", "wateringCycleDays": 10},
+    ).status_code == 200
 
     assert calls == [
         ("list", "internal-user-id", None),
         ("create", "internal-user-id", None),
         ("detail", "internal-user-id", 42),
+        ("update", "internal-user-id", 42),
     ]
 
 
@@ -763,6 +976,7 @@ def test_plant_route_policy_only_exposes_owned_plant_endpoints():
         ("GET", "/plants"),
         ("POST", "/plants"),
         ("GET", "/plants/{plant_id}"),
+        ("PATCH", "/plants/{plant_id}"),
     }
     assert watering_route_surface == watering_mvp_routes
     assert not any(
