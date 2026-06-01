@@ -1,0 +1,1 @@
+export const MAX_WATERING_CYCLE_DAYS = 99

@@ -1,3 +1,4 @@
+from app.domain.plant_constraints import MAX_WATERING_CYCLE_DAYS
 from app.models.plant import Plant, utc_now
 from app.repositories.plant_repository import PlantReadRow, PlantRepository
 from app.schemas.plant import PlantCreate, PlantRead, PlantUpdate
@@ -20,8 +21,7 @@ class PlantService:
         if not name:
             raise PlantValidationError("植物名が必要です")
 
-        if payload.watering_cycle_days < 1:
-            raise PlantValidationError("水やり周期は1日以上で入力してください")
+        _validate_watering_cycle_days(payload.watering_cycle_days)
 
         now = utc_now()
         plant = Plant(
@@ -84,8 +84,9 @@ class PlantService:
             normalized["memo"] = _normalize_optional_text(payload.memo)
 
         if "watering_cycle_days" in supplied_fields:
-            if payload.watering_cycle_days is None or payload.watering_cycle_days < 1:
+            if payload.watering_cycle_days is None:
                 raise PlantValidationError("水やり周期は1日以上で入力してください")
+            _validate_watering_cycle_days(payload.watering_cycle_days)
             normalized["watering_cycle_days"] = payload.watering_cycle_days
 
         return PlantUpdate.model_validate(normalized)
@@ -117,3 +118,12 @@ def _normalize_optional_text(value: str | None) -> str | None:
     if not normalized:
         return None
     return normalized
+
+
+def _validate_watering_cycle_days(value: int) -> None:
+    if value < 1:
+        raise PlantValidationError("水やり周期は1日以上で入力してください")
+    if value > MAX_WATERING_CYCLE_DAYS:
+        raise PlantValidationError(
+            f"水やり周期は{MAX_WATERING_CYCLE_DAYS}日以内で入力してください"
+        )

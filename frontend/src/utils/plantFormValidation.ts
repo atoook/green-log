@@ -1,3 +1,4 @@
+import { MAX_WATERING_CYCLE_DAYS } from '../constants/plant'
 import type {
   PlantCreateInput,
   PlantFormState,
@@ -73,6 +74,9 @@ function validateRequiredPlantFields(form: NormalizedPlantForm): string | null {
   }
   if (form.wateringCycleDays < 1) {
     return '水やり周期は1日以上で入力してください'
+  }
+  if (form.wateringCycleDays > MAX_WATERING_CYCLE_DAYS) {
+    return `水やり周期は${MAX_WATERING_CYCLE_DAYS}日以内で入力してください`
   }
 
   return null

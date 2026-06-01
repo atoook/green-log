@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.core.config import Settings
+from app.domain.plant_constraints import MAX_WATERING_CYCLE_DAYS
 from app.main import app
 from app.models.plant import Plant
 from app.models.plant_photo import PlantPhoto
@@ -189,6 +190,23 @@ def test_create_plant_rejects_invalid_watering_cycle(protected_client):
     assert "水やり周期" in response.json()["detail"]
 
 
+def test_create_plant_rejects_too_large_watering_cycle(protected_client):
+    client = protected_client()
+
+    response = client.post(
+        "/plants",
+        json={
+            "name": "巨大周期のポトス",
+            "acquiredDate": None,
+            "memo": None,
+            "wateringCycleDays": MAX_WATERING_CYCLE_DAYS + 1,
+        },
+    )
+
+    assert response.status_code == 422
+    assert str(MAX_WATERING_CYCLE_DAYS) in response.json()["detail"]
+
+
 def test_get_missing_plant_returns_404(protected_client):
     client = protected_client()
 
@@ -326,6 +344,12 @@ def test_plant_update_contract_preserves_explicit_null_clear_fields():
                 "wateringCycleDays": None,
             },
             "水やり周期",
+        ),
+        (
+            {
+                "wateringCycleDays": MAX_WATERING_CYCLE_DAYS + 1,
+            },
+            str(MAX_WATERING_CYCLE_DAYS),
         ),
     ],
 )
@@ -638,6 +662,7 @@ def test_patch_plant_clears_nullable_fields_and_preserves_unspecified_fields(
         ({"name": None}, "植物名"),
         ({"wateringCycleDays": 0}, "水やり周期"),
         ({"wateringCycleDays": None}, "水やり周期"),
+        ({"wateringCycleDays": MAX_WATERING_CYCLE_DAYS + 1}, str(MAX_WATERING_CYCLE_DAYS)),
     ],
 )
 def test_patch_plant_rejects_domain_validation_errors(

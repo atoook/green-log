@@ -154,6 +154,15 @@ function verifyValidation(module) {
     }).error,
     /水やり周期/,
   )
+  assert.match(
+    module.validatePlantUpdateForm({
+      name: 'ポトス',
+      acquiredDate: '',
+      memo: '',
+      wateringCycleDays: '99999999',
+    }).error,
+    /99日以内/,
+  )
 }
 
 async function verifyDetailComposable(usePlantDetail, samplePlant) {

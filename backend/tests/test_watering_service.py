@@ -3,6 +3,7 @@ from datetime import date, datetime, timezone
 import pytest
 from sqlmodel import Session
 
+from app.domain.plant_constraints import MAX_WATERING_CYCLE_DAYS
 from app.models import Plant, PlantPhoto, User, WateringRecord
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.watering_repository import WateringRepository
@@ -188,6 +189,25 @@ def test_get_plant_watering_calculates_next_date_from_current_cycle_and_history(
         latest_record.id,
         older_record.id,
     ]
+
+
+def test_get_plant_watering_does_not_overflow_with_legacy_large_cycle(test_engine):
+    with Session(test_engine) as session:
+        plant = _create_plant(
+            session,
+            "owner-a",
+            "巨大周期が残った植物",
+            last_watered_at=datetime(2026, 5, 20, 7, 30, tzinfo=timezone.utc),
+            watering_cycle_days=MAX_WATERING_CYCLE_DAYS + 1,
+        )
+
+        detail = _service(session).get_plant_watering("owner-a", plant.id)
+
+    assert detail.plant_id == plant.id
+    assert detail.last_watered_at is not None
+    assert detail.next_watering_date is None
+    assert detail.is_due_today is False
+    assert detail.due_status is None
 
 
 def test_get_plant_watering_returns_unrecorded_detail_without_history(test_engine):
