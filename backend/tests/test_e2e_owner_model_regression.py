@@ -105,7 +105,8 @@ def test_owner_model_request_flow_creates_reuses_and_scopes_application_user(
     assert other_list_response.status_code == 200
     assert other_list_response.json() == []
     assert other_detail_response.status_code == 404
-    assert other_update_response.status_code == 405
+    assert other_update_response.status_code == 404
+    assert other_update_response.json() == {"detail": "Plant not found"}
     assert other_delete_response.status_code == 405
     assert count_users(test_engine) == 2
     assert get_plant_snapshot(test_engine, created["id"]) == plant_snapshot
@@ -131,11 +132,13 @@ def test_owner_model_gate_keeps_adjacent_domain_routes_out_of_scope():
         if path.startswith("/care") or "watering" in path
     }
 
-    assert {("GET", "/plants"), ("POST", "/plants"), ("GET", "/plants/{plant_id}")}.issubset(
-        routes
-    )
+    assert {
+        ("GET", "/plants"),
+        ("POST", "/plants"),
+        ("GET", "/plants/{plant_id}"),
+        ("PATCH", "/plants/{plant_id}"),
+    }.issubset(routes)
     assert watering_route_surface == watering_mvp_routes
-    assert ("PATCH", "/plants/{plant_id}") not in routes
     assert ("DELETE", "/plants/{plant_id}") not in routes
     assert not any(
         forbidden in path

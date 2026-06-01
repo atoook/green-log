@@ -18,8 +18,8 @@ from app.models.plant_photo import PlantPhoto
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.watering_repository import WateringRepository
-from app.schemas.plant import PlantCreate
-from app.services.plant_service import PlantService
+from app.schemas.plant import PlantCreate, PlantUpdate
+from app.services.plant_service import PlantNotFoundError, PlantService
 from app.services.user_service import UserProfileInput, UserService
 from app.services.watering_service import (
     APP_TIMEZONE,
@@ -199,16 +199,37 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
             watered_at=watered_at,
         )
         current_smoke_name = f"{smoke_name}_current"
-        smoke_plant = session.get(Plant, created.id)
-        if smoke_plant is None:
-            raise RuntimeError("Created smoke plant disappeared before heatmap verification")
-        smoke_plant.name = current_smoke_name
-        session.add(smoke_plant)
-        session.commit()
+        watered_on = watered_at.astimezone(APP_TIMEZONE).date()
+        updated_detail = service.update_plant(
+            smoke_user.id,
+            created.id,
+            PlantUpdate(
+                name=current_smoke_name,
+                acquired_date=watered_on,
+                memo=None,
+                watering_cycle_days=10,
+            ),
+        )
+        if updated_detail.name != current_smoke_name:
+            raise RuntimeError("Smoke plant update did not return the updated name")
+        if updated_detail.memo is not None:
+            raise RuntimeError("Smoke plant update did not clear memo")
+        if updated_detail.watering_cycle_days != 10:
+            raise RuntimeError("Smoke plant update did not persist the new watering cycle")
+
+        try:
+            service.update_plant(
+                other_user.id,
+                created.id,
+                PlantUpdate(name=f"{smoke_name}_forbidden"),
+            )
+        except PlantNotFoundError:
+            pass
+        else:
+            raise RuntimeError("Other user updated the smoke plant")
 
         watering_detail = watering_service.get_plant_watering(smoke_user.id, created.id)
         upcoming_care_after_record = watering_service.get_upcoming_care(smoke_user.id)
-        watered_on = watered_at.astimezone(APP_TIMEZONE).date()
         heatmap = watering_service.get_watering_heatmap(
             smoke_user.id,
             start_date=watered_on,
@@ -234,6 +255,11 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
         raise RuntimeError("Next watering date did not match the plant watering cycle")
     if not watering_detail.history:
         raise RuntimeError("Watering detail did not include the created record in history")
+    updated_next_watering_date = (
+        watering_result.record.watered_at.astimezone(APP_TIMEZONE).date() + timedelta(days=10)
+    )
+    if watering_detail.next_watering_date != updated_next_watering_date:
+        raise RuntimeError("Watering detail did not use the updated plant watering cycle")
     if watering_detail.history[0].id != watering_result.record.id:
         raise RuntimeError("Watering history did not return the newest created record first")
     if any(

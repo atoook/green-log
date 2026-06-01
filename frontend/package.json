@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify:plant-edit-flow": "node scripts/verify-plant-edit-flow.mjs"
   },
   "dependencies": {
     "@clerk/vue": "^2.3.2",
