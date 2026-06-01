@@ -77,7 +77,7 @@
     - _Boundary: PlantDetailPage, usePlantWatering integration_
 
 - [ ] 4. 更新機能の回帰テストとスモーク検証を追加する
-  - [ ] 4.1 バックエンド更新 API の正常系と保護境界をテストする
+  - [x] 4.1 バックエンド更新 API の正常系と保護境界をテストする
     - 更新成功、任意項目のクリア、検証エラー、他 owner 404、owner field 非公開を検証する。
     - 更新失敗時に対象 row が変更されないことを確認する。
     - 既存テーブルにない植物属性や DB migration が追加されていないことを確認する。

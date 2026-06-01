@@ -59,6 +59,7 @@ def test_main_app_registers_webhook_and_protected_plant_care_routers():
         ("GET", "/plants"),
         ("POST", "/plants"),
         ("GET", "/plants/{plant_id}"),
+        ("PATCH", "/plants/{plant_id}"),
         ("POST", "/webhooks/clerk"),
     }.union(expected_watering_routes).issubset(routes)
     assert openapi_watering_routes == expected_watering_routes
@@ -218,11 +219,20 @@ def test_app_level_other_owner_detail_contract_is_404_and_hides_existence(
         f"/plants/{created_response.json()['id']}",
         headers={"Authorization": "Bearer user-b-token"},
     )
+    update_response = api_client.patch(
+        f"/plants/{created_response.json()['id']}",
+        headers={"Authorization": "Bearer user-b-token"},
+        json={"name": "Bによる更新", "wateringCycleDays": 1},
+    )
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Plant not found"}
+    assert update_response.status_code == 404
+    assert update_response.json() == {"detail": "Plant not found"}
     assert "clerk-user-a" not in response.text
     assert "clerk-user-b" not in response.text
+    assert "clerk-user-a" not in update_response.text
+    assert "clerk-user-b" not in update_response.text
 
 
 def test_app_level_plant_validation_contract_omits_raw_input(api_client):
@@ -245,6 +255,37 @@ def test_app_level_plant_validation_contract_omits_raw_input(api_client):
     assert "input" not in response.text
     assert "ownerUserId" not in response.text
     assert "internal-other-user" not in response.text
+    assert "sk_test_should_not_echo" not in response.text
+
+
+def test_app_level_plant_update_validation_contract_omits_raw_input(api_client):
+    app.dependency_overrides[get_clerk_session_verifier] = lambda: StubSessionVerifier(
+        {"valid-token": ClerkSessionClaims(clerk_user_id="clerk-valid-user")}
+    )
+
+    created_response = api_client.post(
+        "/plants",
+        headers={"Authorization": "Bearer valid-token"},
+        json={"name": "ポトス", "wateringCycleDays": 7},
+    )
+    assert created_response.status_code == 201
+
+    response = api_client.patch(
+        f"/plants/{created_response.json()['id']}",
+        headers={"Authorization": "Bearer valid-token"},
+        json={
+            "ownerUserId": "internal-other-user",
+            "species": "secret-species",
+            "secret": "sk_test_should_not_echo",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "detail" in response.json()
+    assert "input" not in response.text
+    assert "ownerUserId" not in response.text
+    assert "internal-other-user" not in response.text
+    assert "secret-species" not in response.text
     assert "sk_test_should_not_echo" not in response.text
 
 

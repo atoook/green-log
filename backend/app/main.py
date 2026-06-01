@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Request
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -31,19 +30,11 @@ app.include_router(webhooks_router)
 @app.exception_handler(RequestValidationError)
 async def request_validation_exception_handler(
     _request: Request,
-    exc: RequestValidationError,
+    _exc: RequestValidationError,
 ) -> JSONResponse:
-    errors = [
-        {
-            key: value
-            for key, value in error.items()
-            if key not in {"input", "url"}
-        }
-        for error in exc.errors()
-    ]
     return JSONResponse(
         status_code=422,
-        content={"detail": jsonable_encoder(errors)},
+        content={"detail": "入力内容を確認してください"},
     )
 
 
