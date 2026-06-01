@@ -17,6 +17,41 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    if "plant_photos" in inspector.get_table_names():
+        existing_indexes = {
+            index["name"] for index in inspector.get_indexes("plant_photos")
+        }
+        if "ix_plant_photos_owner_user_id_plant_id_taken_date" in existing_indexes:
+            op.drop_index(
+                "ix_plant_photos_owner_user_id_plant_id_taken_date",
+                table_name="plant_photos",
+            )
+        if "ix_plant_photos_owner_user_id_plant_id_created_at" in existing_indexes:
+            op.drop_index(
+                "ix_plant_photos_owner_user_id_plant_id_created_at",
+                table_name="plant_photos",
+            )
+        op.drop_table("plant_photos")
+
+    plant_columns = {column["name"] for column in inspector.get_columns("plants")}
+    if "cover_photo_id" not in plant_columns:
+        op.add_column("plants", sa.Column("cover_photo_id", sa.Integer(), nullable=True))
+    if "image_url" in plant_columns:
+        op.drop_column("plants", "image_url")
+
+    inspector = sa.inspect(bind)
+    plant_indexes = {index["name"] for index in inspector.get_indexes("plants")}
+    if "ix_plants_cover_photo_id" not in plant_indexes:
+        op.create_index(
+            "ix_plants_cover_photo_id",
+            "plants",
+            ["cover_photo_id"],
+            unique=False,
+        )
+
     op.create_table(
         "plant_photos",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -53,24 +88,9 @@ def upgrade() -> None:
         unique=False,
     )
 
-    with op.batch_alter_table("plants", recreate="always") as batch_op:
-        batch_op.add_column(sa.Column("cover_photo_id", sa.Integer(), nullable=True))
-        batch_op.drop_column("image_url")
-
-    op.create_index(
-        "ix_plants_cover_photo_id",
-        "plants",
-        ["cover_photo_id"],
-        unique=False,
-    )
-
 
 def downgrade() -> None:
     op.drop_index("ix_plants_cover_photo_id", table_name="plants")
-
-    with op.batch_alter_table("plants", recreate="always") as batch_op:
-        batch_op.add_column(sa.Column("image_url", sa.Text(), nullable=True))
-        batch_op.drop_column("cover_photo_id")
 
     op.drop_index(
         "ix_plant_photos_owner_user_id_plant_id_taken_date",
@@ -81,3 +101,6 @@ def downgrade() -> None:
         table_name="plant_photos",
     )
     op.drop_table("plant_photos")
+
+    op.add_column("plants", sa.Column("image_url", sa.Text(), nullable=True))
+    op.drop_column("plants", "cover_photo_id")

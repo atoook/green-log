@@ -4,7 +4,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 from app.core.config import Settings
 
@@ -220,4 +220,73 @@ def test_plant_photo_migration_downgrade_removes_photo_schema(
         "tables": [],
         "plant_columns": {},
         "plant_indexes": {},
+    }
+
+
+def test_plant_photo_migration_recovers_from_partial_photo_table(
+    tmp_path: Path,
+):
+    database_path = tmp_path / "plant-photo-migration-partial.db"
+    database_url = f"sqlite:///{database_path}"
+    config = make_alembic_config(database_url)
+
+    command.upgrade(config, "0003_create_watering_records")
+
+    engine = create_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE plant_photos (
+                    id INTEGER NOT NULL,
+                    owner_user_id TEXT NOT NULL,
+                    plant_id INTEGER NOT NULL,
+                    image_url TEXT,
+                    storage_key TEXT,
+                    taken_date DATE,
+                    comment TEXT,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    PRIMARY KEY (id),
+                    CONSTRAINT fk_plant_photos_owner_user_id_users
+                        FOREIGN KEY(owner_user_id) REFERENCES users (id),
+                    CONSTRAINT fk_plant_photos_plant_id_plants
+                        FOREIGN KEY(plant_id) REFERENCES plants (id)
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE INDEX ix_plant_photos_owner_user_id_plant_id_created_at
+                ON plant_photos (owner_user_id, plant_id, created_at)
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE INDEX ix_plant_photos_owner_user_id_plant_id_taken_date
+                ON plant_photos (owner_user_id, plant_id, taken_date)
+                """
+            )
+        )
+
+    command.upgrade(config, "head")
+
+    inspector = inspect(engine)
+    plant_columns = column_schema(inspector, "plants")
+    assert "cover_photo_id" in plant_columns
+    assert "image_url" not in plant_columns
+    assert "plant_photos" in inspector.get_table_names()
+    assert index_schema(inspector, "plant_photos") == {
+        "ix_plant_photos_owner_user_id_plant_id_created_at": {
+            "columns": ("owner_user_id", "plant_id", "created_at"),
+            "unique": False,
+        },
+        "ix_plant_photos_owner_user_id_plant_id_taken_date": {
+            "columns": ("owner_user_id", "plant_id", "taken_date"),
+            "unique": False,
+        },
     }
