@@ -4,6 +4,7 @@ export type ApiErrorType =
   | 'network'
   | 'server'
   | 'auth'
+  | 'conflict'
   | 'forbidden'
 
 export interface ApiError extends Error {

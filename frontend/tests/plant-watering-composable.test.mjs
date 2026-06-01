@@ -109,6 +109,7 @@ function createPlantWateringDetail(overrides = {}) {
     lastWateredAt: '2026-05-30T00:00:00Z',
     nextWateringDate: '2026-06-06',
     isDueToday: false,
+    hasWateredToday: false,
     dueStatus: null,
     history: [
       createRecord(20, '2026-05-30T00:00:00Z'),
@@ -144,6 +145,7 @@ test('usePlantWatering loads watering detail and exposes newest-first history se
   assert.deepEqual(calls, ['getPlantWatering:7'])
   assert.deepEqual(state.watering.value, detail)
   assert.deepEqual(state.history.value, detail.history)
+  assert.equal(state.hasWateredToday.value, false)
   assert.equal(state.error.value, null)
   assert.equal(state.isLoading.value, false)
 })
@@ -221,10 +223,11 @@ test('usePlantWatering records watering once while pending and applies response 
     lastWateredAt: '2026-05-23T00:00:00Z',
     nextWateringDate: '2026-05-30',
     isDueToday: true,
+    hasWateredToday: false,
     dueStatus: 'due_today',
     history: [createRecord(19, '2026-05-23T00:00:00Z')],
   })
-  const updatedDetail = createPlantWateringDetail()
+  const updatedDetail = createPlantWateringDetail({ hasWateredToday: true })
   const createResult = {
     record: updatedDetail.history[0],
     state: updatedDetail,
@@ -257,9 +260,32 @@ test('usePlantWatering records watering once while pending and applies response 
   assert.deepEqual(state.history.value, updatedDetail.history)
   assert.equal(state.watering.value.lastWateredAt, '2026-05-30T00:00:00Z')
   assert.equal(state.watering.value.nextWateringDate, '2026-06-06')
+  assert.equal(state.hasWateredToday.value, true)
   assert.equal(state.recordingError.value, null)
   assert.equal(state.successMessage.value, '水やりを記録しました。')
   assert.equal(state.isRecording.value, false)
+})
+
+test('usePlantWatering skips record requests after today has already been recorded', async () => {
+  const { module } = await loadPlantWateringComposableModule()
+  const calls = []
+  const apiClient = {
+    async getPlantWatering() {
+      return createPlantWateringDetail({ hasWateredToday: true })
+    },
+    async recordWatering(plantId) {
+      calls.push(`recordWatering:${plantId}`)
+      return null
+    },
+  }
+  const state = module.usePlantWatering({ value: '7' }, { wateringApiClient: apiClient, autoLoad: false })
+
+  await state.loadWatering()
+  const result = await state.recordWatering()
+
+  assert.equal(result, null)
+  assert.deepEqual(calls, [])
+  assert.equal(state.hasWateredToday.value, true)
 })
 
 test('usePlantWatering keeps record failures distinct from detail load failures', async () => {

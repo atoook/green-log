@@ -112,6 +112,7 @@ function createCareItem(plantId = 7) {
     lastWateredAt: null,
     nextWateringDate: null,
     isDueToday: true,
+    hasWateredToday: false,
     dueStatus: 'unrecorded',
     plant: {
       id: plantId,
@@ -208,6 +209,7 @@ test('useUpcomingCare records watering with per-plant recording state and refetc
       lastWateredAt: '2026-05-30T00:00:00Z',
       nextWateringDate: '2026-06-06',
       isDueToday: false,
+      hasWateredToday: true,
       dueStatus: null,
       history: [],
     },
@@ -258,6 +260,7 @@ test('useUpcomingCare ignores duplicate watering submits for the same plant whil
       lastWateredAt: '2026-05-30T00:00:00Z',
       nextWateringDate: '2026-06-06',
       isDueToday: false,
+      hasWateredToday: true,
       dueStatus: null,
       history: [],
     },

@@ -26,6 +26,7 @@ export function usePlantWatering(
   const recordingError = ref<ApiError | null>(null)
   const successMessage = ref<string | null>(null)
   const history = computed<WateringRecord[]>(() => watering.value?.history ?? [])
+  const hasWateredToday = computed(() => watering.value?.hasWateredToday ?? false)
 
   function parsePlantId(): number | null {
     const raw = Array.isArray(plantIdParam.value) ? plantIdParam.value[0] : plantIdParam.value
@@ -65,7 +66,7 @@ export function usePlantWatering(
   }
 
   async function recordWatering(): Promise<WateringRecordCreateResult | null> {
-    if (isRecording.value) {
+    if (isRecording.value || hasWateredToday.value) {
       return null
     }
 
@@ -111,6 +112,7 @@ export function usePlantWatering(
   return {
     watering,
     history,
+    hasWateredToday,
     isLoading,
     isRecording,
     error,

@@ -128,6 +128,56 @@ def test_list_for_plant_returns_empty_history_for_owned_plant_without_records(
     assert history == []
 
 
+def test_exists_for_plant_between_checks_owned_records_in_range(test_engine):
+    with Session(test_engine) as session:
+        plant = _create_user_and_plant(session, "owner-a", "Aのホヤ")
+        other_owner_plant = _create_user_and_plant(
+            session,
+            "owner-b",
+            "Bのホヤ",
+            clerk_user_id="clerk-owner-b",
+        )
+        repository = WateringRepository(session)
+        repository.add(
+            WateringRecord(
+                owner_user_id="owner-a",
+                plant_id=plant.id,
+                watered_at=datetime(2026, 5, 30, 15, 0, tzinfo=timezone.utc),
+            )
+        )
+        repository.add(
+            WateringRecord(
+                owner_user_id="owner-b",
+                plant_id=other_owner_plant.id,
+                watered_at=datetime(2026, 5, 30, 15, 0, tzinfo=timezone.utc),
+            )
+        )
+        session.commit()
+
+        exists = repository.exists_for_plant_between(
+            "owner-a",
+            plant.id,
+            datetime(2026, 5, 30, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 31, 0, 0, tzinfo=timezone.utc),
+        )
+        outside_range = repository.exists_for_plant_between(
+            "owner-a",
+            plant.id,
+            datetime(2026, 5, 31, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc),
+        )
+        other_owner = repository.exists_for_plant_between(
+            "owner-b",
+            plant.id,
+            datetime(2026, 5, 30, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 31, 0, 0, tzinfo=timezone.utc),
+        )
+
+    assert exists is True
+    assert outside_range is False
+    assert other_owner is False
+
+
 def test_list_for_heatmap_returns_owned_records_in_inclusive_date_range_with_current_plant_names(
     test_engine,
 ):

@@ -234,6 +234,7 @@ function nextWateringLabel(item: UpcomingCareItem): string {
               <div class="w-full md:w-auto md:min-w-44">
                 <WateringActionButton
                   :is-recording="Boolean(isRecordingByPlantId[item.plantId])"
+                  :already-recorded-today="item.hasWateredToday || successfulPlantId === item.plantId"
                   :has-error="Boolean(recordingError)"
                   :was-successful="successfulPlantId === item.plantId"
                   @record="emit('record', item.plantId)"

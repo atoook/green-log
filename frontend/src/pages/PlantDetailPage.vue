@@ -25,6 +25,7 @@ const {
 const {
   watering,
   history,
+  hasWateredToday,
   isLoading: isWateringLoading,
   isRecording,
   error: wateringError,
@@ -37,7 +38,7 @@ const isEditing = ref(false)
 
 const hasRecordingError = computed(() => recordingError.value !== null)
 const wasWateringSuccessful = computed(() => successMessage.value !== null)
-const isWateringActionDisabled = computed(() => !plant.value)
+const isWateringActionDisabled = computed(() => !plant.value || hasWateredToday.value)
 
 function backToList(): void {
   void router.push({ name: 'plants' })
@@ -110,6 +111,7 @@ async function savePlant(input: PlantUpdateInput): Promise<void> {
             :is-recording="isRecording"
             :disabled="isWateringActionDisabled"
             :has-error="hasRecordingError"
+            :already-recorded-today="hasWateredToday"
             :was-successful="wasWateringSuccessful"
             @record="recordPlantWatering"
           />
