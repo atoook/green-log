@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 import pytest
 from sqlmodel import Session
 
-from app.models import Plant, User, WateringRecord
+from app.models import Plant, PlantPhoto, User, WateringRecord
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.watering_repository import WateringRepository
 from app.services.watering_service import (
@@ -82,6 +82,38 @@ def test_upcoming_care_groups_today_tomorrow_and_day_after_tomorrow_owned_plants
 
     assert care.sections[0].items[2].due_status == "overdue"
     assert care.sections[0].items[2].next_watering_date == date(2026, 5, 27)
+
+
+def test_upcoming_care_uses_representative_photo_url(test_engine):
+    with Session(test_engine) as session:
+        plant = _create_plant(session, "owner-a", "写真つきのポトス")
+        other_owner_plant = _create_plant(session, "owner-b", "Bのポトス")
+        cover_photo = _add_photo(
+            session,
+            "owner-a",
+            plant.id,
+            image_url="https://example.com/cover.jpg",
+        )
+        other_owner_photo = _add_photo(
+            session,
+            "owner-b",
+            other_owner_plant.id,
+            image_url="https://example.com/other.jpg",
+        )
+
+        plant.cover_photo_id = cover_photo.id
+        session.add(plant)
+        session.commit()
+
+        care = _service(session).get_upcoming_care("owner-a")
+        assert care.sections[0].items[0].plant.image_url == "https://example.com/cover.jpg"
+
+        plant.cover_photo_id = other_owner_photo.id
+        session.add(plant)
+        session.commit()
+
+        mismatched_care = _service(session).get_upcoming_care("owner-a")
+        assert mismatched_care.sections[0].items[0].plant.image_url is None
 
 
 def test_upcoming_care_returns_default_today_section_and_empty_items(test_engine):
@@ -521,6 +553,27 @@ def _add_record(
     session.commit()
     session.refresh(record)
     return record
+
+
+def _add_photo(
+    session: Session,
+    owner_user_id: str,
+    plant_id: int | None,
+    *,
+    image_url: str | None,
+) -> PlantPhoto:
+    if plant_id is None:
+        raise ValueError("plant_id must be persisted before creating photos")
+
+    photo = PlantPhoto(
+        owner_user_id=owner_user_id,
+        plant_id=plant_id,
+        image_url=image_url,
+    )
+    session.add(photo)
+    session.commit()
+    session.refresh(photo)
+    return photo
 
 
 def _as_utc(value: datetime) -> datetime:

@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from app.core.config import Settings
 from app.main import app
 from app.models.plant import Plant
+from app.models.plant_photo import PlantPhoto
 from app.routers.plants import get_plant_service
 from app.schemas.plant import PlantRead
 
@@ -32,7 +33,7 @@ def test_create_and_read_plant(protected_client):
     assert created["name"] == "リビングのモンステラ"
     assert created["acquiredDate"] == "2026-05-28"
     assert created["memo"] == "窓際に置いている"
-    assert created["imageUrl"] == "https://example.com/monstera.jpg"
+    assert created["imageUrl"] is None
     assert created["wateringCycleDays"] == 7
     assert "ownerUserId" not in created
     assert "owner_user_id" not in created
@@ -104,6 +105,7 @@ def test_owner_separation_flow_hides_owner_and_preserves_other_user_row(
     with Session(test_engine) as session:
         plant_before = session.get(Plant, first_a["id"])
         assert plant_before is not None
+        assert not hasattr(plant_before, "image_url")
         before_snapshot = {
             "owner_user_id": plant_before.owner_user_id,
             "name": plant_before.name,
@@ -214,6 +216,116 @@ def test_repository_timestamp_and_optional_fields_round_trip(protected_client):
     assert payload["updatedAt"].endswith("Z")
 
 
+def test_create_plant_ignores_legacy_image_url_input(protected_client, test_engine):
+    client = protected_client()
+
+    response = client.post(
+        "/plants",
+        json={
+            "name": "画像入力を無視するポトス",
+            "imageUrl": "https://example.com/legacy.jpg",
+            "wateringCycleDays": 7,
+        },
+    )
+
+    assert response.status_code == 201
+    created = response.json()
+    assert created["imageUrl"] is None
+
+    with Session(test_engine) as session:
+        plant = session.get(Plant, created["id"])
+
+    assert plant is not None
+    assert plant.cover_photo_id is None
+    assert not hasattr(plant, "image_url")
+
+
+def test_list_and_detail_return_only_owned_cover_photo_url(
+    api_client,
+    override_current_user,
+    test_engine,
+):
+    override_current_user("owner-a")
+    client = api_client
+
+    create_response = client.post(
+        "/plants",
+        json={"name": "代表写真のポトス", "wateringCycleDays": 7},
+    )
+    assert create_response.status_code == 201
+    plant_id = create_response.json()["id"]
+
+    with Session(test_engine) as session:
+        plant = session.get(Plant, plant_id)
+        assert plant is not None
+        session.add(
+            PlantPhoto(
+                owner_user_id="owner-b",
+                plant_id=plant_id,
+                image_url="https://example.com/other-owner.jpg",
+            )
+        )
+        same_owner_cover = PlantPhoto(
+            owner_user_id="owner-a",
+            plant_id=plant_id,
+            image_url="https://example.com/cover.jpg",
+        )
+        empty_cover = PlantPhoto(
+            owner_user_id="owner-a",
+            plant_id=plant_id,
+            image_url=None,
+        )
+        session.add(same_owner_cover)
+        session.add(empty_cover)
+        session.commit()
+        session.refresh(same_owner_cover)
+        session.refresh(empty_cover)
+
+        plant.cover_photo_id = same_owner_cover.id
+        session.add(plant)
+        session.commit()
+
+    list_response = client.get("/plants")
+    detail_response = client.get(f"/plants/{plant_id}")
+
+    assert list_response.status_code == 200
+    assert list_response.json()[0]["imageUrl"] == "https://example.com/cover.jpg"
+    assert detail_response.status_code == 200
+    assert detail_response.json()["imageUrl"] == "https://example.com/cover.jpg"
+    assert_no_owner_fields(detail_response.json())
+
+    with Session(test_engine) as session:
+        plant = session.get(Plant, plant_id)
+        assert plant is not None
+        other_owner_cover = session.exec(
+            select(PlantPhoto).where(PlantPhoto.owner_user_id == "owner-b")
+        ).one()
+        plant.cover_photo_id = other_owner_cover.id
+        session.add(plant)
+        session.commit()
+
+    mismatched_detail_response = client.get(f"/plants/{plant_id}")
+    assert mismatched_detail_response.status_code == 200
+    assert mismatched_detail_response.json()["imageUrl"] is None
+
+    with Session(test_engine) as session:
+        plant = session.get(Plant, plant_id)
+        assert plant is not None
+        empty_cover = session.exec(
+            select(PlantPhoto).where(
+                PlantPhoto.owner_user_id == "owner-a",
+                PlantPhoto.image_url.is_(None),
+            )
+        ).one()
+        plant.cover_photo_id = empty_cover.id
+        session.add(plant)
+        session.commit()
+
+    empty_url_detail_response = client.get(f"/plants/{plant_id}")
+    assert empty_url_detail_response.status_code == 200
+    assert empty_url_detail_response.json()["imageUrl"] is None
+
+
 def test_plant_routes_require_authentication(api_client):
     client = api_client
 
@@ -277,7 +389,7 @@ def test_valid_current_user_reaches_plant_service_with_internal_user_id(
                 name=payload.name,
                 acquired_date=payload.acquired_date,
                 memo=payload.memo,
-                image_url=payload.image_url,
+                image_url=None,
                 watering_cycle_days=payload.watering_cycle_days,
                 created_at=now,
                 updated_at=now,

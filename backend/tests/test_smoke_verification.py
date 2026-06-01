@@ -8,6 +8,7 @@ from sqlmodel.pool import StaticPool
 
 from app.core.config import Settings
 from app.models.plant import Plant
+from app.models.plant_photo import PlantPhoto
 from app.models.user import User
 from app.models.watering_record import WateringRecord
 from app.scripts import verify_turso_crud
@@ -54,6 +55,7 @@ def test_verify_plant_crud_uses_application_user_upsert(monkeypatch):
     with Session(engine) as session:
         users = list(session.exec(select(User)).all())
         plants = list(session.exec(select(Plant)).all())
+        plant_photos = list(session.exec(select(PlantPhoto)).all())
         watering_records = list(session.exec(select(WateringRecord)).all())
 
     smoke_users = [user for user in users if user.clerk_user_id.startswith("smoke-clerk-")]
@@ -62,6 +64,7 @@ def test_verify_plant_crud_uses_application_user_upsert(monkeypatch):
     ]
 
     assert result.created_plant_id >= 1
+    assert result.created_plant_photo_id >= 1
     assert result.created_watering_record_id >= 1
     assert len(observed_clerk_user_ids) == 3
     assert observed_clerk_user_ids[0] == observed_clerk_user_ids[1]
@@ -74,6 +77,16 @@ def test_verify_plant_crud_uses_application_user_upsert(monkeypatch):
     assert len(smoke_plants) == 1
     assert len(other_plants) == 1
     assert smoke_plants[0].owner_user_id != smoke_users[0].clerk_user_id
+    smoke_photos = [
+        photo for photo in plant_photos if photo.owner_user_id == smoke_users[0].id
+    ]
+    other_photos = [
+        photo for photo in plant_photos if photo.owner_user_id == other_users[0].id
+    ]
+    assert len(smoke_photos) == 2
+    assert len(other_photos) == 1
+    assert smoke_plants[0].cover_photo_id == result.created_plant_photo_id
+    assert any(photo.id == result.created_plant_photo_id for photo in smoke_photos)
     smoke_records = [
         record for record in watering_records if record.owner_user_id == smoke_users[0].id
     ]
@@ -163,6 +176,37 @@ def test_assert_no_ownerless_watering_records_raises_when_rows_are_ownerless():
         raise AssertionError("ownerless watering records must fail smoke verification")
 
 
+def test_assert_no_ownerless_plant_photos_raises_when_rows_are_ownerless():
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE plant_photos (
+                    id INTEGER PRIMARY KEY,
+                    owner_user_id TEXT NULL,
+                    plant_id INTEGER NOT NULL
+                )
+                """
+            )
+        )
+        connection.execute(
+            text("INSERT INTO plant_photos (owner_user_id, plant_id) VALUES (NULL, 1)")
+        )
+
+    try:
+        verify_turso_crud.assert_no_ownerless_plant_photos(engine)
+    except RuntimeError as error:
+        assert "ownerless plant photos" in str(error)
+    else:
+        raise AssertionError("ownerless plant photos must fail smoke verification")
+
+
 def test_main_prints_created_watering_record_id(monkeypatch, capsys):
     settings = Settings(database_url="sqlite://")
     observed_modes: list[str] = []
@@ -178,6 +222,7 @@ def test_main_prints_created_watering_record_id(monkeypatch, capsys):
         crud_settings.append(received_settings)
         return verify_turso_crud.SmokeVerificationResult(
             created_plant_id=12,
+            created_plant_photo_id=23,
             created_watering_record_id=34,
         )
 
