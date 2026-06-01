@@ -3,10 +3,9 @@ from logging.config import fileConfig
 from alembic import context
 from sqlmodel import SQLModel
 
+from app import models  # noqa: F401
 from app.core.config import get_settings
 from app.db.engine import create_database_engine, normalize_database_url
-from app.models.plant import Plant  # noqa: F401
-from app.models.user import User  # noqa: F401
 
 config = context.config
 

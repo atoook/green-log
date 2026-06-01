@@ -84,4 +84,3 @@ Plant Photo Schema Foundation は、Green Mate が将来の成長写真ログや
 3. When 写真基盤の変更が適用される, the Green Mate shall 他ユーザー所有の植物と写真が紐づかないことを検証できる
 4. When 写真基盤の変更が適用される, the Green Mate shall 植物一覧と植物詳細が写真未登録でも取得できることを検証できる
 5. When 写真基盤の変更が適用される, the Green Mate shall 旧来の植物本体画像項目に依存しないことを検証できる
-

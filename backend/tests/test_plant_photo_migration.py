@@ -5,7 +5,9 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, inspect
+from sqlmodel import SQLModel
 
+from app import models  # noqa: F401
 from app.core.config import Settings
 
 
@@ -72,6 +74,15 @@ def make_alembic_config(database_url: str) -> Config:
         legacy_owner_backfill_user_id=None,
     )
     return config
+
+
+def test_model_package_import_registers_migration_tables_in_metadata():
+    assert {
+        "plants",
+        "plant_photos",
+        "users",
+        "watering_records",
+    }.issubset(SQLModel.metadata.tables)
 
 
 def test_plant_photo_migration_creates_photo_table_and_cover_reference(
