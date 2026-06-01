@@ -80,7 +80,7 @@
   - _Requirements: 4.5, 6.1, 6.2, 6.3, 6.4, 6.5_
   - _Boundary: Migration and verification, Plant schemas_
 
-- [ ] 4.3 smoke verification に写真基盤の検証を組み込む
+- [x] 4.3 smoke verification に写真基盤の検証を組み込む
   - local SQLite と Turso の smoke path で、写真未設定の植物、複数写真、代表写真URL、他 owner 写真の混入なしを検証する。
   - ownerless な写真記録が通常 path で作られていないことを検証する。
   - 完了時点で、smoke script は写真基盤の代表的な owner scoped CRUD を検証して成功・失敗を判定できる。

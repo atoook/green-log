@@ -14,6 +14,7 @@ from sqlmodel import Session
 from app.core.config import Settings
 from app.db.engine import create_database_engine
 from app.models.plant import Plant
+from app.models.plant_photo import PlantPhoto
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.watering_repository import WateringRepository
@@ -30,6 +31,7 @@ from app.services.watering_service import (
 @dataclass(frozen=True)
 class SmokeVerificationResult:
     created_plant_id: int
+    created_plant_photo_id: int
     created_watering_record_id: int
 
 
@@ -89,7 +91,6 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
                 name=smoke_name,
                 acquired_date=None,
                 memo="smoke verification",
-                image_url=None,
                 watering_cycle_days=7,
             )
         )
@@ -99,12 +100,63 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
                 name=f"{smoke_name}_other_owner",
                 acquired_date=None,
                 memo="smoke verification other owner",
-                image_url=None,
                 watering_cycle_days=7,
             ),
         )
+
+        smoke_plant = session.get(Plant, created.id)
+        other_plant = session.get(Plant, other_created.id)
+        if smoke_plant is None or other_plant is None:
+            raise RuntimeError("Created smoke plants disappeared before photo verification")
+
+        cover_photo = PlantPhoto(
+            owner_user_id=smoke_user.id,
+            plant_id=created.id,
+            image_url=f"https://example.invalid/{created.id}/cover.jpg",
+        )
+        secondary_photo = PlantPhoto(
+            owner_user_id=smoke_user.id,
+            plant_id=created.id,
+            image_url=f"https://example.invalid/{created.id}/secondary.jpg",
+        )
+        other_owner_photo = PlantPhoto(
+            owner_user_id=other_user.id,
+            plant_id=other_created.id,
+            image_url=f"https://example.invalid/{other_created.id}/cover.jpg",
+        )
+        session.add(cover_photo)
+        session.add(secondary_photo)
+        session.add(other_owner_photo)
+        session.commit()
+        session.refresh(cover_photo)
+        session.refresh(secondary_photo)
+        session.refresh(other_owner_photo)
+
+        if cover_photo.id is None:
+            raise RuntimeError("Plant photo create did not return a generated id")
+        cover_photo_id = cover_photo.id
+        smoke_plant.cover_photo_id = cover_photo_id
+        session.add(smoke_plant)
+        session.commit()
+
         plants = service.list_plants(smoke_user.id)
         detail = service.get_plant(smoke_user.id, created.id)
+        if detail.image_url != cover_photo.image_url:
+            raise RuntimeError("Detail read did not expose the smoke cover photo URL")
+        if not any(plant.id == created.id and plant.image_url == cover_photo.image_url for plant in plants):
+            raise RuntimeError("List read did not expose the smoke cover photo URL")
+
+        smoke_plant.cover_photo_id = other_owner_photo.id
+        session.add(smoke_plant)
+        session.commit()
+        mismatched_detail = service.get_plant(smoke_user.id, created.id)
+        if mismatched_detail.image_url is not None:
+            raise RuntimeError("Other-owner photo was exposed as the smoke cover photo")
+
+        smoke_plant.cover_photo_id = cover_photo_id
+        session.add(smoke_plant)
+        session.commit()
+
         watering_service = WateringService(
             PlantRepository(session),
             WateringRepository(session),
@@ -120,11 +172,13 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
 
         initial_upcoming_care = watering_service.get_upcoming_care(smoke_user.id)
         if not any(
-            item.plant_id == created.id and item.due_status == "unrecorded"
+            item.plant_id == created.id
+            and item.due_status == "unrecorded"
+            and item.plant.image_url == cover_photo.image_url
             for section in initial_upcoming_care.sections
             for item in section.items
         ):
-            raise RuntimeError("Unwatered smoke plant was not listed in today's care")
+            raise RuntimeError("Unwatered smoke plant was not listed with its cover photo")
 
         try:
             watering_service.record_watering(other_user.id, created.id)
@@ -204,10 +258,12 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
         raise RuntimeError("Watering heatmap did not expose the current smoke plant name")
 
     assert_no_ownerless_plants(engine)
+    assert_no_ownerless_plant_photos(engine)
     assert_no_ownerless_watering_records(engine)
 
     return SmokeVerificationResult(
         created_plant_id=created.id,
+        created_plant_photo_id=cover_photo_id,
         created_watering_record_id=watering_result.record.id,
     )
 
@@ -231,6 +287,18 @@ def assert_no_ownerless_watering_records(engine) -> None:
     if ownerless_count:
         raise RuntimeError(
             f"Smoke verification found {ownerless_count} ownerless watering records"
+        )
+
+
+def assert_no_ownerless_plant_photos(engine) -> None:
+    with engine.connect() as connection:
+        ownerless_count = connection.execute(
+            text("SELECT COUNT(*) FROM plant_photos WHERE owner_user_id IS NULL")
+        ).scalar_one()
+
+    if ownerless_count:
+        raise RuntimeError(
+            f"Smoke verification found {ownerless_count} ownerless plant photos"
         )
 
 
