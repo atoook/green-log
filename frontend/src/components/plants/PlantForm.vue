@@ -15,7 +15,6 @@ const form = reactive<PlantFormState>({
   name: '',
   acquiredDate: '',
   memo: '',
-  imageUrl: '',
   wateringCycleDays: '7',
 })
 
@@ -41,7 +40,6 @@ function submitForm(): void {
     name: form.name.trim(),
     acquiredDate: form.acquiredDate || null,
     memo: form.memo.trim() || null,
-    imageUrl: form.imageUrl.trim() || null,
     wateringCycleDays,
   })
 }
@@ -66,10 +64,6 @@ function submitForm(): void {
       <label class="grid gap-1 text-sm text-stone-700">
         水やり周期
         <input v-model="form.wateringCycleDays" class="rounded-md border border-stone-200 px-3 py-2" inputmode="numeric" />
-      </label>
-      <label class="grid gap-1 text-sm text-stone-700">
-        画像 URL
-        <input v-model="form.imageUrl" class="rounded-md border border-stone-200 px-3 py-2" type="url" />
       </label>
       <label class="grid gap-1 text-sm text-stone-700">
         メモ
