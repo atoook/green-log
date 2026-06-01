@@ -8,6 +8,7 @@ from app.models import Plant, PlantPhoto, User, WateringRecord
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.watering_repository import WateringRepository
 from app.services.watering_service import (
+    WateringAlreadyRecordedTodayError,
     WateringHeatmapRangeError,
     WateringPlantNotFoundError,
     WateringService,
@@ -74,6 +75,7 @@ def test_upcoming_care_groups_today_tomorrow_and_day_after_tomorrow_owned_plants
 
     assert care.sections[0].items[0].due_status == "unrecorded"
     assert care.sections[0].items[0].is_due_today is True
+    assert care.sections[0].items[0].has_watered_today is False
     assert care.sections[0].items[0].last_watered_at is None
     assert care.sections[0].items[0].next_watering_date is None
     assert care.sections[0].items[0].plant.name == "未記録のポトス"
@@ -184,6 +186,7 @@ def test_get_plant_watering_calculates_next_date_from_current_cycle_and_history(
     )
     assert detail.next_watering_date == date(2026, 6, 1)
     assert detail.is_due_today is False
+    assert detail.has_watered_today is False
     assert detail.due_status is None
     assert [record.id for record in detail.history] == [
         latest_record.id,
@@ -207,6 +210,7 @@ def test_get_plant_watering_does_not_overflow_with_legacy_large_cycle(test_engin
     assert detail.last_watered_at is not None
     assert detail.next_watering_date is None
     assert detail.is_due_today is False
+    assert detail.has_watered_today is False
     assert detail.due_status is None
 
 
@@ -220,6 +224,7 @@ def test_get_plant_watering_returns_unrecorded_detail_without_history(test_engin
     assert detail.last_watered_at is None
     assert detail.next_watering_date is None
     assert detail.is_due_today is True
+    assert detail.has_watered_today is False
     assert detail.due_status == "unrecorded"
     assert detail.history == []
 
@@ -265,6 +270,7 @@ def test_record_watering_creates_record_updates_summary_and_refreshes_state(
     assert result.state.last_watered_at == now
     assert result.state.next_watering_date == date(2026, 6, 6)
     assert result.state.is_due_today is False
+    assert result.state.has_watered_today is True
     assert result.state.due_status is None
     assert [record.id for record in result.state.history] == [result.record.id]
     assert plant.last_watered_at is not None
@@ -291,6 +297,32 @@ def test_record_watering_uses_explicit_watered_at_when_provided(test_engine):
     assert result.state.next_watering_date == date(2026, 6, 6)
     assert plant.last_watered_at is not None
     assert _as_utc(plant.last_watered_at) == explicit_watered_at
+
+
+def test_record_watering_rejects_second_record_on_same_app_date(test_engine):
+    first_watered_at = datetime(2026, 5, 29, 15, 30, tzinfo=timezone.utc)
+    second_watered_at = datetime(2026, 5, 30, 8, 0, tzinfo=timezone.utc)
+
+    with Session(test_engine) as session:
+        plant = _create_plant(
+            session,
+            "owner-a",
+            "同じ日に重複するポトス",
+            last_watered_at=first_watered_at,
+        )
+        _add_record(session, "owner-a", plant.id, first_watered_at)
+        service = _service(session)
+
+        with pytest.raises(WateringAlreadyRecordedTodayError):
+            service.record_watering(
+                "owner-a",
+                plant.id,
+                watered_at=second_watered_at,
+            )
+
+        history = WateringRepository(session).list_for_plant("owner-a", plant.id)
+
+    assert [_as_utc(record.watered_at) for record in history] == [first_watered_at]
 
 
 def test_record_watering_hides_missing_and_other_owner_plants_without_records(

@@ -58,6 +58,7 @@ def test_get_plant_watering_route_returns_latest_next_date_and_history(test_engi
     assert payload["lastWateredAt"] == _as_api_datetime(latest_watered_at)
     assert payload["nextWateringDate"] == today.isoformat()
     assert payload["isDueToday"] is True
+    assert payload["hasWateredToday"] is False
     assert payload["dueStatus"] == "due_today"
     assert [record["id"] for record in payload["history"]] == [
         latest_record_id,
@@ -86,6 +87,7 @@ def test_get_plant_watering_route_returns_unrecorded_state_and_empty_history(
         "lastWateredAt": None,
         "nextWateringDate": None,
         "isDueToday": True,
+        "hasWateredToday": False,
         "dueStatus": "unrecorded",
         "history": [],
     }
@@ -114,6 +116,7 @@ def test_record_watering_route_creates_record_and_retrieved_state_matches(
     assert record["plantId"] == plant_id
     assert state["plantId"] == plant_id
     assert state["lastWateredAt"] == record["wateredAt"]
+    assert state["hasWateredToday"] is True
     assert state["history"][0]["id"] == record["id"]
     assert state["history"][0]["wateredAt"] == record["wateredAt"]
     assert state["nextWateringDate"] == (
@@ -166,12 +169,14 @@ def test_app_watering_flow_keeps_upcoming_detail_record_and_storage_consistent(
     assert [item["plantId"] for item in today_before["sections"][0]["items"]] == [plant_id]
     assert today_before["sections"][0]["items"][0]["dueStatus"] == "unrecorded"
     assert today_before["sections"][0]["items"][0]["lastWateredAt"] is None
+    assert today_before["sections"][0]["items"][0]["hasWateredToday"] is False
     assert today_before["sections"][0]["items"][0]["nextWateringDate"] is None
     assert detail_before == {
         "plantId": plant_id,
         "lastWateredAt": None,
         "nextWateringDate": None,
         "isDueToday": True,
+        "hasWateredToday": False,
         "dueStatus": "unrecorded",
         "history": [],
     }
@@ -193,6 +198,7 @@ def test_app_watering_flow_keeps_upcoming_detail_record_and_storage_consistent(
     assert state["lastWateredAt"] == record["wateredAt"]
     assert state["nextWateringDate"] == expected_next_date
     assert state["isDueToday"] is False
+    assert state["hasWateredToday"] is True
     assert state["dueStatus"] is None
     assert state["history"] == [record]
     assert_no_owner_fields(created)
@@ -220,6 +226,31 @@ def test_app_watering_flow_keeps_upcoming_detail_record_and_storage_consistent(
     assert [(item.plant_id, _as_api_datetime(item.watered_at)) for item in records] == [
         (plant_id, record["wateredAt"])
     ]
+
+
+def test_record_watering_route_rejects_duplicate_same_day_records(test_engine):
+    with Session(test_engine) as session:
+        plant = _create_plant(
+            session,
+            "owner-a",
+            "重複防止するポトス",
+            watering_cycle_days=10,
+        )
+        plant_id = plant.id
+
+    client = _client(test_engine, user_id="owner-a")
+
+    first_response = client.post(f"/plants/{plant_id}/watering-records", json={})
+    second_response = client.post(f"/plants/{plant_id}/watering-records", json={})
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "Watering already recorded today"}
+
+    with Session(test_engine) as session:
+        records = session.exec(select(WateringRecord)).all()
+
+    assert len(records) == 1
 
 
 def test_watering_routes_hide_missing_and_other_owner_plants_with_404(
@@ -285,6 +316,7 @@ def test_watering_routes_use_internal_current_user_id(test_engine):
                 last_watered_at=now,
                 next_watering_date=date(2026, 6, 6),
                 is_due_today=False,
+                has_watered_today=True,
                 due_status=None,
                 history=[],
             )
@@ -308,6 +340,7 @@ def test_watering_routes_use_internal_current_user_id(test_engine):
                     last_watered_at=now,
                     next_watering_date=date(2026, 6, 6),
                     is_due_today=False,
+                    has_watered_today=True,
                     due_status=None,
                     history=[record],
                 ),

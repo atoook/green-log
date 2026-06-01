@@ -70,7 +70,7 @@ test('UpcomingCareList displays due item details and delegates record events to 
   assert.match(source, /予定日を過ぎています/)
   assert.match(source, /予定を確認/)
   assert.match(source, /未確定/)
-  assert.match(source, /<WateringActionButton[\s\S]*:is-recording=["']Boolean\(isRecordingByPlantId\[item\.plantId\]\)["'][\s\S]*:has-error=["']Boolean\(recordingError\)["'][\s\S]*:was-successful=["']successfulPlantId === item\.plantId["'][\s\S]*@record=["']emit\('record', item\.plantId\)["']/)
+  assert.match(source, /<WateringActionButton[\s\S]*:is-recording=["']Boolean\(isRecordingByPlantId\[item\.plantId\]\)["'][\s\S]*:already-recorded-today=["']item\.hasWateredToday \|\| successfulPlantId === item\.plantId["'][\s\S]*:has-error=["']Boolean\(recordingError\)["'][\s\S]*:was-successful=["']successfulPlantId === item\.plantId["'][\s\S]*@record=["']emit\('record', item\.plantId\)["']/)
 })
 
 test('UpcomingCareList keeps mobile layout readable without scope creep controls', async () => {

@@ -67,6 +67,7 @@ test('createWateringApiClient delegates plant watering detail requests by plant 
     lastWateredAt: null,
     nextWateringDate: null,
     isDueToday: true,
+    hasWateredToday: false,
     dueStatus: 'unrecorded',
     history: [],
   }
@@ -94,6 +95,7 @@ test('createWateringApiClient posts an empty body for watering records without o
       lastWateredAt: '2026-05-30T00:00:00Z',
       nextWateringDate: '2026-06-06',
       isDueToday: false,
+      hasWateredToday: true,
       dueStatus: null,
       history: [],
     },

@@ -35,6 +35,7 @@ class PlantWateringStateRead(WateringSchema):
     last_watered_at: datetime | None = None
     next_watering_date: date | None = None
     is_due_today: bool
+    has_watered_today: bool
     due_status: DueStatus | None = None
 
     @field_serializer("last_watered_at")

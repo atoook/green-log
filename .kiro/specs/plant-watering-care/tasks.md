@@ -195,7 +195,7 @@
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 6.10, 6.11, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 9.1, 9.2, 9.3, 9.4, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
     - _Boundary: Completion verification_
 
-- [ ] 9. 直近のお世話予定を `/care/upcoming` に置き換える
+- [x] 9. 直近のお世話予定を `/care/upcoming` に置き換える
   - [x] 9.1 `/care/upcoming` の backend contract と予定計算を追加する
     - 今日を含む取得日数として `days` を扱い、未指定では今日のみ、`days=3` では今日・明日・明後日を対象にする。
     - 今日 section には未記録、期限超過、今日予定の植物を含め、明日以降は次回水やり予定日が対象日に一致する植物だけを含める。
@@ -241,3 +241,28 @@
     - _Depends: 9.2, 9.4_
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 6.10, 6.11, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 9.1, 9.2, 9.3, 9.4, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 11.1, 11.2, 11.3, 11.4_
     - _Boundary: Frontend verification, Backend verification, Smoke verification_
+
+- [x] 10. 同日水やり重複登録を防止する追補
+  - [x] 10.1 当日記録済み状態を watering state に追加する
+    - `hasWateredToday` を detail/upcoming response と frontend type/composable に追加する。
+    - 完了条件: 植物詳細と直近のお世話予定で、当日すでに水やり済みかどうかを同じ API contract から判定できる。
+    - _Requirements: 2.8_
+    - _Boundary: Watering schemas, watering TypeScript types, usePlantWatering_
+
+  - [x] 10.2 同日 2 回目以降の水やり record 作成を拒否する
+    - Asia/Tokyo の同一日付に同じ owner/plant の記録が存在する場合、追加 record を作成しない。
+    - 完了条件: 重複時は 409 を返し、WateringRecord と Plant.last_watered_at が追加更新されない。
+    - _Requirements: 2.7_
+    - _Boundary: WateringService, WateringRepository, WateringRouter_
+
+  - [x] 10.3 当日記録済み時の水やり登録ボタンを非活性表示にする
+    - 当日記録済み状態では水やり登録ボタンを押せない状態にし、記録済みであることが分かる label を表示する。
+    - 完了条件: 植物詳細と直近のお世話予定の水やり操作で、当日記録済み状態が通常の記録可能状態と区別できる。
+    - _Requirements: 2.8, 9.3_
+    - _Boundary: WateringActionButton, PlantDetailPage, UpcomingCareList_
+
+  - [x] 10.4 重複防止追補の回帰を検証する
+    - backend の repository/service/API tests、frontend の composable/component/API tests、frontend build を実行する。
+    - 完了条件: 同日重複防止、当日記録済み UI、既存水やりフローの回帰が自動テストで確認できる。
+    - _Requirements: 2.7, 2.8_
+    - _Boundary: Backend tests, Frontend tests, Frontend build_

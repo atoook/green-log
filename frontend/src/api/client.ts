@@ -20,6 +20,7 @@ const ERROR_MESSAGES: Record<ApiErrorType, string> = {
   validation: '入力内容を確認してください。',
   network: '接続できませんでした。',
   server: '記録を読み込めませんでした。',
+  conflict: 'すでに登録されています。',
 }
 
 export function createApiError(
@@ -102,6 +103,9 @@ function errorTypeForStatus(status: number): ApiErrorType {
   }
   if (status === 404) {
     return 'not_found'
+  }
+  if (status === 409) {
+    return 'conflict'
   }
   if (status === 422) {
     return 'validation'
