@@ -18,7 +18,7 @@
   - _Boundary: PlantPhoto, Plant, Migration and verification_
 
 - [ ] 2. Backend の代表写真 read contract を実装する
-- [ ] 2.1 植物一覧・詳細で代表写真URLを導出する
+- [x] 2.1 植物一覧・詳細で代表写真URLを導出する
   - 代表写真が同じ owner と植物に属する場合だけ、植物一覧・詳細の代表画像URLとして返す。
   - 代表写真がない、不正、他 owner、他植物、または表示可能URLなしの場合は未設定として返す。
   - 写真未登録の植物一覧・詳細取得は失敗させない。

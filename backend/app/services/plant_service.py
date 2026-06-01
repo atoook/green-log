@@ -1,5 +1,5 @@
 from app.models.plant import Plant, utc_now
-from app.repositories.plant_repository import PlantRepository
+from app.repositories.plant_repository import PlantReadRow, PlantRepository
 from app.schemas.plant import PlantCreate, PlantRead
 
 
@@ -29,21 +29,39 @@ class PlantService:
             name=name,
             acquired_date=payload.acquired_date,
             memo=payload.memo,
-            image_url=payload.image_url,
             watering_cycle_days=payload.watering_cycle_days,
             created_at=now,
             updated_at=now,
         )
-        return PlantRead.model_validate(self.repository.create(plant))
+        return _plant_to_read(self.repository.create(plant), image_url=payload.image_url)
 
     def list_plants(self, owner_user_id: str) -> list[PlantRead]:
         return [
-            PlantRead.model_validate(plant)
-            for plant in self.repository.list(owner_user_id)
+            _row_to_read(row)
+            for row in self.repository.list_with_cover_image(owner_user_id)
         ]
 
     def get_plant(self, owner_user_id: str, plant_id: int) -> PlantRead:
-        plant = self.repository.get_by_id(owner_user_id, plant_id)
+        plant = self.repository.get_by_id_with_cover_image(owner_user_id, plant_id)
         if plant is None:
             raise PlantNotFoundError("Plant not found")
-        return PlantRead.model_validate(plant)
+        return _row_to_read(plant)
+
+
+def _row_to_read(row: PlantReadRow) -> PlantRead:
+    return _plant_to_read(row.plant, image_url=row.cover_image_url)
+
+
+def _plant_to_read(plant: Plant, image_url: str | None) -> PlantRead:
+    return PlantRead.model_validate(
+        {
+            "id": plant.id,
+            "name": plant.name,
+            "acquired_date": plant.acquired_date,
+            "memo": plant.memo,
+            "image_url": image_url,
+            "watering_cycle_days": plant.watering_cycle_days,
+            "created_at": plant.created_at,
+            "updated_at": plant.updated_at,
+        }
+    )
