@@ -17,12 +17,12 @@ class PlantCreate(SQLModel):
     name: str
     acquired_date: date | None = None
     memo: str | None = None
-    image_url: str | None = None
     watering_cycle_days: int
 
 
 class PlantRead(PlantCreate):
     id: int
+    image_url: str | None = None
     created_at: datetime
     updated_at: datetime
 

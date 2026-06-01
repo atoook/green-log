@@ -72,10 +72,6 @@ function detailErrorMessage(error: ApiError): string {
           <dt class="font-semibold text-stone-950">メモ</dt>
           <dd class="whitespace-pre-wrap text-stone-700">{{ plant.memo || '未記録' }}</dd>
         </div>
-        <div class="rounded-md bg-stone-50 p-3">
-          <dt class="font-semibold text-stone-950">画像 URL</dt>
-          <dd class="break-all text-stone-700">{{ plant.imageUrl || '未記録' }}</dd>
-        </div>
       </dl>
     </article>
   </section>
