@@ -10,7 +10,8 @@ from app.main import app
 from app.models.plant import Plant
 from app.models.plant_photo import PlantPhoto
 from app.routers.plants import get_plant_service
-from app.schemas.plant import PlantRead
+from app.schemas.plant import PlantRead, PlantUpdate
+from app.services.plant_service import PlantService, PlantValidationError
 
 
 def test_create_and_read_plant(protected_client):
@@ -238,6 +239,136 @@ def test_create_plant_ignores_legacy_image_url_input(protected_client, test_engi
     assert plant is not None
     assert plant.cover_photo_id is None
     assert not hasattr(plant, "image_url")
+
+
+def test_plant_update_contract_normalizes_existing_editable_fields_only():
+    payload = PlantUpdate.model_validate(
+        {
+            "name": "  窓辺のポトス  ",
+            "acquiredDate": "2026-05-28",
+            "memo": "   ",
+            "wateringCycleDays": 10,
+        }
+    )
+
+    normalized = PlantService.normalize_update_payload(payload)
+
+    assert normalized.name == "窓辺のポトス"
+    assert normalized.acquired_date == date(2026, 5, 28)
+    assert normalized.memo is None
+    assert normalized.watering_cycle_days == 10
+    assert set(normalized.model_fields_set) == {
+        "name",
+        "acquired_date",
+        "memo",
+        "watering_cycle_days",
+    }
+    assert not hasattr(normalized, "owner_user_id")
+    assert not hasattr(normalized, "species")
+
+
+def test_plant_update_contract_supports_partial_patch_fields():
+    payload = PlantUpdate.model_validate({"name": "  棚のポトス  "})
+
+    normalized = PlantService.normalize_update_payload(payload)
+
+    assert normalized.name == "棚のポトス"
+    assert set(normalized.model_fields_set) == {"name"}
+    assert normalized.acquired_date is None
+    assert normalized.memo is None
+    assert normalized.watering_cycle_days is None
+
+
+def test_plant_update_contract_preserves_explicit_null_clear_fields():
+    payload = PlantUpdate.model_validate(
+        {
+            "memo": None,
+            "acquiredDate": None,
+        }
+    )
+
+    normalized = PlantService.normalize_update_payload(payload)
+
+    assert normalized.memo is None
+    assert normalized.acquired_date is None
+    assert set(normalized.model_fields_set) == {"memo", "acquired_date"}
+    assert "name" not in normalized.model_fields_set
+    assert "watering_cycle_days" not in normalized.model_fields_set
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        (
+            {
+                "name": "  ",
+                "acquiredDate": None,
+                "memo": None,
+                "wateringCycleDays": 7,
+            },
+            "植物名",
+        ),
+        (
+            {
+                "name": None,
+            },
+            "植物名",
+        ),
+        (
+            {
+                "wateringCycleDays": 0,
+            },
+            "水やり周期",
+        ),
+        (
+            {
+                "wateringCycleDays": None,
+            },
+            "水やり周期",
+        ),
+    ],
+)
+def test_plant_update_service_rejects_invalid_domain_values(payload, message):
+    update = PlantUpdate.model_validate(payload)
+
+    with pytest.raises(PlantValidationError, match=message):
+        PlantService.normalize_update_payload(update)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "name": "ポトス",
+            "acquiredDate": "not-a-date",
+            "memo": None,
+            "wateringCycleDays": 7,
+        },
+        {
+            "name": "ポトス",
+            "acquiredDate": None,
+            "memo": None,
+            "wateringCycleDays": "毎週",
+        },
+        {
+            "name": "ポトス",
+            "acquiredDate": None,
+            "memo": None,
+            "wateringCycleDays": 7,
+            "ownerUserId": "attacker",
+        },
+        {
+            "name": "ポトス",
+            "acquiredDate": None,
+            "memo": None,
+            "wateringCycleDays": 7,
+            "species": "Epipremnum aureum",
+        },
+    ],
+)
+def test_plant_update_contract_rejects_invalid_or_out_of_scope_fields(payload):
+    with pytest.raises(ValueError):
+        PlantUpdate.model_validate(payload)
 
 
 def test_list_and_detail_return_only_owned_cover_photo_url(

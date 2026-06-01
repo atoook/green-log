@@ -1,6 +1,6 @@
 from app.models.plant import Plant, utc_now
 from app.repositories.plant_repository import PlantReadRow, PlantRepository
-from app.schemas.plant import PlantCreate, PlantRead
+from app.schemas.plant import PlantCreate, PlantRead, PlantUpdate
 
 
 class PlantValidationError(ValueError):
@@ -47,6 +47,32 @@ class PlantService:
             raise PlantNotFoundError("Plant not found")
         return _row_to_read(plant)
 
+    @staticmethod
+    def normalize_update_payload(payload: PlantUpdate) -> PlantUpdate:
+        normalized: dict[str, str | int | object | None] = {}
+        supplied_fields = payload.model_fields_set
+
+        if "name" in supplied_fields:
+            if payload.name is None:
+                raise PlantValidationError("植物名が必要です")
+            name = payload.name.strip()
+            if not name:
+                raise PlantValidationError("植物名が必要です")
+            normalized["name"] = name
+
+        if "acquired_date" in supplied_fields:
+            normalized["acquired_date"] = payload.acquired_date
+
+        if "memo" in supplied_fields:
+            normalized["memo"] = _normalize_optional_text(payload.memo)
+
+        if "watering_cycle_days" in supplied_fields:
+            if payload.watering_cycle_days is None or payload.watering_cycle_days < 1:
+                raise PlantValidationError("水やり周期は1日以上で入力してください")
+            normalized["watering_cycle_days"] = payload.watering_cycle_days
+
+        return PlantUpdate.model_validate(normalized)
+
 
 def _row_to_read(row: PlantReadRow) -> PlantRead:
     return _plant_to_read(row.plant, image_url=row.cover_image_url)
@@ -65,3 +91,12 @@ def _plant_to_read(plant: Plant, image_url: str | None) -> PlantRead:
             "updated_at": plant.updated_at,
         }
     )
+
+
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    if not normalized:
+        return None
+    return normalized
