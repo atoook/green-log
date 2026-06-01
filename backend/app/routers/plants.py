@@ -7,7 +7,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.types import CurrentUser
 from app.db.session import get_session
 from app.repositories.plant_repository import PlantRepository
-from app.schemas.plant import PlantCreate, PlantRead
+from app.schemas.plant import PlantCreate, PlantRead, PlantUpdate
 from app.services.plant_service import PlantNotFoundError, PlantService, PlantValidationError
 
 router = APIRouter(prefix="/plants", tags=["plants"])
@@ -48,5 +48,23 @@ def get_plant(
 ) -> PlantRead:
     try:
         return service.get_plant(current_user.id, plant_id)
+    except PlantNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/{plant_id}", response_model=PlantRead)
+def update_plant(
+    plant_id: int,
+    payload: PlantUpdate,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    service: Annotated[PlantService, Depends(get_plant_service)],
+) -> PlantRead:
+    try:
+        return service.update_plant(current_user.id, plant_id, payload)
+    except PlantValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     except PlantNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

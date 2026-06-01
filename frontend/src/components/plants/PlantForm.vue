@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import type { PlantCreateInput, PlantFormState } from '../../types/plant'
+import { validatePlantCreateForm } from '../../utils/plantFormValidation'
 
 const props = defineProps<{
   isSubmitting: boolean
@@ -21,27 +22,14 @@ const form = reactive<PlantFormState>({
 const fieldError = ref<string | null>(null)
 
 function submitForm(): void {
-  const wateringCycleDays = Number(form.wateringCycleDays)
-  if (!form.name.trim()) {
-    fieldError.value = '植物名を入力してください'
-    return
-  }
-  if (!Number.isFinite(wateringCycleDays) || !Number.isInteger(wateringCycleDays)) {
-    fieldError.value = '水やり周期を日数で入力してください'
-    return
-  }
-  if (wateringCycleDays < 1) {
-    fieldError.value = '水やり周期は1日以上で入力してください'
+  const result = validatePlantCreateForm(form)
+  if (result.error || !result.input) {
+    fieldError.value = result.error
     return
   }
 
   fieldError.value = null
-  emit('submit', {
-    name: form.name.trim(),
-    acquiredDate: form.acquiredDate || null,
-    memo: form.memo.trim() || null,
-    wateringCycleDays,
-  })
+  emit('submit', result.input)
 }
 </script>
 

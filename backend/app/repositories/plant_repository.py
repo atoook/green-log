@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 
 from app.models.plant import Plant
 from app.models.plant_photo import PlantPhoto
+from app.schemas.plant import PlantUpdate
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,35 @@ class PlantRepository:
         self.session.add(plant)
         self.session.flush()
         return plant
+
+    def update_profile(
+        self,
+        owner_user_id: str,
+        plant_id: int,
+        payload: PlantUpdate,
+        updated_at: datetime,
+    ) -> PlantReadRow | None:
+        plant = self.get_by_id(owner_user_id, plant_id)
+        if plant is None:
+            return None
+
+        if "name" in payload.model_fields_set:
+            if payload.name is None:
+                raise ValueError("Normalized plant update name must not be null")
+            plant.name = payload.name
+        if "acquired_date" in payload.model_fields_set:
+            plant.acquired_date = payload.acquired_date
+        if "memo" in payload.model_fields_set:
+            plant.memo = payload.memo
+        if "watering_cycle_days" in payload.model_fields_set:
+            if payload.watering_cycle_days is None:
+                raise ValueError("Normalized plant update watering cycle must not be null")
+            plant.watering_cycle_days = payload.watering_cycle_days
+        plant.updated_at = updated_at
+
+        self.session.add(plant)
+        self.session.commit()
+        return self.get_by_id_with_cover_image(owner_user_id, plant_id)
 
     def _select_with_cover_image_url(self, owner_user_id: str):
         cover_join = sa.and_(

@@ -117,7 +117,8 @@ def test_record_watering_route_creates_record_and_retrieved_state_matches(
     assert state["history"][0]["id"] == record["id"]
     assert state["history"][0]["wateredAt"] == record["wateredAt"]
     assert state["nextWateringDate"] == (
-        _parse_api_datetime(record["wateredAt"]).date() + timedelta(days=10)
+        _parse_api_datetime(record["wateredAt"]).astimezone(APP_TIMEZONE).date()
+        + timedelta(days=10)
     ).isoformat()
     assert_no_owner_fields(created)
 
@@ -185,7 +186,8 @@ def test_app_watering_flow_keeps_upcoming_detail_record_and_storage_consistent(
     record = created["record"]
     state = created["state"]
     expected_next_date = (
-        _parse_api_datetime(record["wateredAt"]).date() + timedelta(days=10)
+        _parse_api_datetime(record["wateredAt"]).astimezone(APP_TIMEZONE).date()
+        + timedelta(days=10)
     ).isoformat()
     assert state["plantId"] == plant_id
     assert state["lastWateredAt"] == record["wateredAt"]

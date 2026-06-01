@@ -2,6 +2,7 @@ from collections.abc import Callable
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+from app.domain.plant_constraints import MAX_WATERING_CYCLE_DAYS
 from app.models import Plant, WateringRecord
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.watering_repository import WateringRepository
@@ -264,6 +265,8 @@ class WateringService:
         if last_watered_at is None:
             due_status = "unrecorded"
             is_due_today = True
+        elif plant.watering_cycle_days > MAX_WATERING_CYCLE_DAYS:
+            next_watering_date = None
         else:
             next_watering_date = _app_date(last_watered_at) + timedelta(
                 days=plant.watering_cycle_days,

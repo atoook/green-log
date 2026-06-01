@@ -1,17 +1,27 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PlantDetail from '../components/plants/PlantDetail.vue'
+import PlantEditForm from '../components/plants/PlantEditForm.vue'
 import WateringActionButton from '../components/watering/WateringActionButton.vue'
 import WateringHistoryList from '../components/watering/WateringHistoryList.vue'
 import WateringStatusPanel from '../components/watering/WateringStatusPanel.vue'
 import { usePlantDetail } from '../composables/usePlantDetail'
 import { usePlantWatering } from '../composables/usePlantWatering'
+import type { PlantUpdateInput } from '../types/plant'
 
 const route = useRoute()
 const router = useRouter()
 const plantId = computed(() => route.params.plantId)
-const { plant, isLoading, error } = usePlantDetail(plantId)
+const {
+  plant,
+  isLoading,
+  isUpdating,
+  error,
+  updateError,
+  successMessage: updateSuccessMessage,
+  updatePlant,
+} = usePlantDetail(plantId)
 const {
   watering,
   history,
@@ -23,6 +33,7 @@ const {
   loadWatering,
   recordWatering,
 } = usePlantWatering(plantId)
+const isEditing = ref(false)
 
 const hasRecordingError = computed(() => recordingError.value !== null)
 const wasWateringSuccessful = computed(() => successMessage.value !== null)
@@ -39,11 +50,47 @@ async function recordPlantWatering(): Promise<void> {
 function retryWatering(): void {
   void loadWatering()
 }
+
+function startEditing(): void {
+  if (plant.value) {
+    isEditing.value = true
+  }
+}
+
+function cancelEditing(): void {
+  isEditing.value = false
+}
+
+async function savePlant(input: PlantUpdateInput): Promise<void> {
+  const updated = await updatePlant(input)
+  if (!updated) {
+    return
+  }
+
+  isEditing.value = false
+  await loadWatering()
+}
 </script>
 
 <template>
   <main class="mx-auto grid max-w-3xl gap-4 p-4">
-    <PlantDetail :plant="plant" :is-loading="isLoading" :error="error" @back="backToList" />
+    <PlantEditForm
+      v-if="plant && isEditing"
+      :plant="plant"
+      :is-saving="isUpdating"
+      :server-error="updateError"
+      @submit="savePlant"
+      @cancel="cancelEditing"
+    />
+
+    <PlantDetail
+      v-else
+      :plant="plant"
+      :is-loading="isLoading"
+      :error="error"
+      @back="backToList"
+      @edit="startEditing"
+    />
 
     <section
       v-if="plant"
@@ -70,11 +117,11 @@ function retryWatering(): void {
       </div>
 
       <p
-        v-if="successMessage"
+        v-if="updateSuccessMessage || successMessage"
         class="rounded-md border border-leaf-100 bg-leaf-50 p-3 text-sm font-semibold text-leaf-700"
         aria-live="polite"
       >
-        {{ successMessage }}
+        {{ updateSuccessMessage || successMessage }}
       </p>
 
       <WateringStatusPanel
