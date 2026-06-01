@@ -89,7 +89,7 @@
   - _Boundary: Migration and verification_
 
 - [ ] 5. 統合検証を完了する
-- [ ] 5.1 Backend test suite と migration smoke を通す
+- [x] 5.1 Backend test suite と migration smoke を通す
   - Backend tests を実行し、migration、植物 API、認証境界、水やり関連 summary の回帰がないことを確認する。
   - local SQLite smoke を実行し、写真基盤を含む owner scoped CRUD が通ることを確認する。
   - 完了時点で、Backend の主要検証コマンドが成功し、写真基盤の失敗が残っていない。
