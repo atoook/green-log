@@ -13,6 +13,7 @@ from app.services.plant_photo_service import (
     PlantPhotoNotFoundError,
     PlantPhotoQuotaExceededError,
     PlantPhotoService,
+    PlantPhotoValidationError,
 )
 
 
@@ -44,14 +45,17 @@ def test_register_photo_revalidates_quota_and_returns_display_schema(test_engine
             owner_user_id="owner-a",
             plant_id=plant.id,
             payload=PlantPhotoCreate(
-                object_key=f"plants/{plant.id}/photo.webp",
+                object_key=f"plants/{plant.id}/4bb385d0-eef0-4985-b50f-1e3da1fdf54f.webp",
                 taken_date=date(2026, 6, 1),
                 comment="葉が増えた",
             ),
         )
 
         assert photo.plant_id == plant.id
-        assert photo.image_url == f"https://cdn.example.invalid/plants/{plant.id}/photo.webp"
+        assert photo.image_url == (
+            f"https://cdn.example.invalid/plants/{plant.id}/"
+            "4bb385d0-eef0-4985-b50f-1e3da1fdf54f.webp"
+        )
         assert photo.taken_date == date(2026, 6, 1)
         assert photo.comment == "葉が増えた"
         assert photo.is_cover is False
@@ -77,10 +81,41 @@ def test_register_photo_rejects_quota_race_without_creating_record(test_engine):
             _service(session).register_photo(
                 owner_user_id="owner-a",
                 plant_id=plant.id,
-                payload=PlantPhotoCreate(object_key=f"plants/{plant.id}/extra.webp"),
+                payload=PlantPhotoCreate(
+                    object_key=(
+                        f"plants/{plant.id}/4bb385d0-eef0-4985-b50f-1e3da1fdf54f.webp"
+                    )
+                ),
             )
 
         assert PlantPhotoRepository(session).count_for_plant("owner-a", plant.id) == 5
+
+
+@pytest.mark.parametrize(
+    "object_key",
+    [
+        "plants/999/4bb385d0-eef0-4985-b50f-1e3da1fdf54f.webp",
+        "plants/1/not-a-uuid.webp",
+        "users/owner-a/4bb385d0-eef0-4985-b50f-1e3da1fdf54f.webp",
+        "../plants/1/4bb385d0-eef0-4985-b50f-1e3da1fdf54f.webp",
+        "plants/1/4bb385d0-eef0-4985-b50f-1e3da1fdf54f.gif",
+    ],
+)
+def test_register_photo_rejects_object_key_outside_current_plant(
+    test_engine,
+    object_key,
+):
+    with Session(test_engine) as session:
+        plant = _seed_user_and_plant(session)
+
+        with pytest.raises(PlantPhotoValidationError):
+            _service(session).register_photo(
+                owner_user_id="owner-a",
+                plant_id=plant.id,
+                payload=PlantPhotoCreate(object_key=object_key),
+            )
+
+        assert PlantPhotoRepository(session).count_for_plant("owner-a", plant.id) == 0
 
 
 def test_get_gallery_returns_quota_and_cover_state(test_engine):

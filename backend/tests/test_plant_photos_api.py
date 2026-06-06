@@ -4,6 +4,7 @@ from unittest.mock import ANY
 import pytest
 
 from app.routers.photo_dependencies import get_plant_photo_service
+from app.routers.photos import _read_limited_upload_file
 from app.schemas.plant_photo import (
     PlantPhotoGalleryRead,
     PlantPhotoQuotaRead,
@@ -16,6 +17,7 @@ from app.services.plant_photo_service import (
     PlantPhotoValidationError,
     PlantPhotoService,
 )
+from app.domain.plant_photo_constraints import MAX_PHOTO_UPLOAD_BYTES
 from app.storage.s3 import StorageOperationError
 from app.models.plant_photo import PlantPhoto
 from app.models.user import User
@@ -106,6 +108,16 @@ class FakeUrlResolver:
         return f"https://cdn.example.invalid/{object_key}"
 
 
+class FakeUploadFile:
+    def __init__(self, body: bytes) -> None:
+        self.body = body
+        self.read_sizes: list[int] = []
+
+    async def read(self, size: int = -1) -> bytes:
+        self.read_sizes.append(size)
+        return self.body[:size]
+
+
 def test_photo_api_routes_are_protected_and_call_owner_scoped_service(
     protected_client,
     app_dependency_override,
@@ -193,6 +205,16 @@ def test_photo_api_routes_require_auth(api_client, app_dependency_override):
 
     assert response.status_code == 401
     assert fake_service.calls == []
+
+
+@pytest.mark.anyio
+async def test_upload_file_reader_rejects_oversized_file_without_unbounded_read():
+    upload_file = FakeUploadFile(b"x" * (MAX_PHOTO_UPLOAD_BYTES + 2))
+
+    with pytest.raises(PlantPhotoValidationError):
+        await _read_limited_upload_file(upload_file)
+
+    assert upload_file.read_sizes == [MAX_PHOTO_UPLOAD_BYTES + 1]
 
 
 def test_photo_api_integration_happy_path_uses_owner_scoped_domain_service(
@@ -291,6 +313,41 @@ def test_photo_api_integration_hides_other_owner_photo_and_plant(
     ]
 
     assert [response.status_code for response in responses] == [404, 404, 404, 404, 404]
+
+
+def test_photo_api_integration_rejects_object_key_for_different_plant(
+    protected_client,
+    app_dependency_override,
+    test_engine,
+):
+    storage = FakeStorage()
+    app_dependency_override(
+        get_plant_photo_service,
+        _real_photo_service_override(test_engine, storage),
+    )
+    client = protected_client("owner-a")
+    plant_id = client.post(
+        "/plants",
+        json={"name": "Aのポトス", "wateringCycleDays": 7},
+    ).json()["id"]
+    other_plant_id = client.post(
+        "/plants",
+        json={"name": "Aの別植物", "wateringCycleDays": 7},
+    ).json()["id"]
+
+    response = client.post(
+        f"/plants/{plant_id}/photos",
+        json={
+            "objectKey": (
+                f"plants/{other_plant_id}/4bb385d0-eef0-4985-b50f-1e3da1fdf54f.webp"
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    assert "owner-a" not in response.text
+    with Session(test_engine) as session:
+        assert PlantPhotoRepository(session).count_for_plant("owner-a", plant_id) == 0
 
 
 def test_photo_api_integration_enforces_quota_and_unlimited_flag(

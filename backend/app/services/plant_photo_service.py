@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from pathlib import PurePath
 from typing import Protocol
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.domain.plant_photo_constraints import (
     ALLOWED_PHOTO_CONTENT_TYPES,
@@ -104,6 +104,7 @@ class PlantPhotoService:
             raise PlantPhotoNotFoundError("Plant not found")
 
         self._validate_quota(owner_user_id, plant_id)
+        self._validate_object_key(payload.object_key, plant_id)
         now = utc_now()
         photo = self.photo_repository.create(
             PlantPhoto(
@@ -199,6 +200,29 @@ class PlantPhotoService:
         if len(body) > MAX_PHOTO_UPLOAD_BYTES:
             raise PlantPhotoValidationError("Photo file is too large")
         return extension
+
+    def _validate_object_key(self, object_key: str, plant_id: int) -> None:
+        parts = object_key.split("/")
+        if len(parts) != 3 or parts[0] != "plants":
+            raise PlantPhotoValidationError("Invalid photo object key")
+
+        try:
+            key_plant_id = int(parts[1])
+        except ValueError as exc:
+            raise PlantPhotoValidationError("Invalid photo object key") from exc
+
+        if key_plant_id != plant_id:
+            raise PlantPhotoValidationError("Invalid photo object key")
+
+        filename = parts[2]
+        stem, separator, extension = filename.rpartition(".")
+        if not stem or separator != "." or extension.lower() not in ALLOWED_PHOTO_EXTENSIONS:
+            raise PlantPhotoValidationError("Invalid photo object key")
+
+        try:
+            UUID(stem)
+        except ValueError as exc:
+            raise PlantPhotoValidationError("Invalid photo object key") from exc
 
     def _photo_to_read(
         self,
