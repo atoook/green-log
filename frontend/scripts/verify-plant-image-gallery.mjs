@@ -17,6 +17,7 @@ try {
   ])
 
   await verifyGalleryRender(galleryModule.default)
+  await verifyGalleryDeleteFlow()
   await verifyComposable(composableModule.usePlantPhotos)
   await verifyApiClientSource()
   await verifyPageIntegration()
@@ -76,6 +77,17 @@ async function verifyGalleryRender(PlantImageGallery) {
   assert.doesNotMatch(listed, /\/ 5枚/)
   assert.match(listed, /代表/)
   assert.match(listed, /葉が増えた/)
+}
+
+async function verifyGalleryDeleteFlow() {
+  const source = await readFile(
+    new URL('../src/components/plants/PlantImageGallery.vue', import.meta.url),
+    'utf8',
+  )
+  assert.match(source, /window\.confirm\(message\)/)
+  assert.match(source, /emit\('delete', photo\.id\)/)
+  assert.match(source, /代表画像も未設定に戻ります/)
+  assert.doesNotMatch(source, /pendingDeletePhoto/)
 }
 
 async function verifyComposable(usePlantPhotos) {

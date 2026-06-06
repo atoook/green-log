@@ -23,7 +23,6 @@ const emit = defineEmits<{
 const selectedFile = ref<File | null>(null)
 const takenDate = ref('')
 const comment = ref('')
-const pendingDeletePhoto = ref<PlantPhoto | null>(null)
 const failedImageIds = ref(new Set<string>())
 
 const photos = computed(() => props.gallery?.photos ?? [])
@@ -65,19 +64,13 @@ function submitPhoto(): void {
 }
 
 function confirmDelete(photo: PlantPhoto): void {
-  pendingDeletePhoto.value = photo
-}
-
-function cancelDelete(): void {
-  pendingDeletePhoto.value = null
-}
-
-function deletePhoto(): void {
-  if (!pendingDeletePhoto.value) {
+  const message = photo.isCover
+    ? 'この画像を削除します。代表画像も未設定に戻ります。'
+    : 'この画像を削除します。'
+  if (!window.confirm(message)) {
     return
   }
-  emit('delete', pendingDeletePhoto.value.id)
-  pendingDeletePhoto.value = null
+  emit('delete', photo.id)
 }
 
 function markImageFailed(photoId: string): void {
@@ -207,20 +200,5 @@ function markImageFailed(photoId: string): void {
       <p v-if="isAtLimit" class="text-sm font-semibold text-stone-700">画像枚数の上限に達しています。</p>
       <p v-if="actionError" class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ actionError.message }}</p>
     </form>
-
-    <div v-if="pendingDeletePhoto" class="rounded-md border border-red-200 bg-red-50 p-4">
-      <p class="text-sm font-semibold text-red-900">この画像を削除します。</p>
-      <p v-if="pendingDeletePhoto.isCover" class="mt-1 text-sm text-red-800">
-        代表画像も未設定に戻ります。
-      </p>
-      <div class="mt-3 flex flex-wrap gap-2">
-        <button class="rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white" type="button" @click="deletePhoto">
-          削除する
-        </button>
-        <button class="rounded-md border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700" type="button" @click="cancelDelete">
-          キャンセル
-        </button>
-      </div>
-    </div>
   </section>
 </template>
