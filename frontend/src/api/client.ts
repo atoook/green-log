@@ -68,7 +68,7 @@ export function createAuthenticatedApiClient(
       try {
         response = await fetchImpl(`${baseUrl}${path}`, {
           ...init,
-          headers: createRequestHeaders(init?.headers, token),
+          headers: createRequestHeaders(init?.headers, token, init?.body),
         })
       } catch {
         throw createApiError('network')
@@ -83,10 +83,14 @@ export function createAuthenticatedApiClient(
   }
 }
 
-function createRequestHeaders(headers: HeadersInit | undefined, token: string): Headers {
+function createRequestHeaders(
+  headers: HeadersInit | undefined,
+  token: string,
+  body: BodyInit | null | undefined,
+): Headers {
   const requestHeaders = new Headers(headers)
 
-  if (!requestHeaders.has('Content-Type')) {
+  if (!requestHeaders.has('Content-Type') && !(body instanceof FormData)) {
     requestHeaders.set('Content-Type', 'application/json')
   }
 

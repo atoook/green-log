@@ -25,6 +25,14 @@ def dependency_overrides_are_test_local():
 
 
 @pytest.fixture()
+def app_dependency_override():
+    def override(dependency, replacement) -> None:
+        app.dependency_overrides[dependency] = replacement
+
+    return override
+
+
+@pytest.fixture()
 def test_engine():
     engine = create_engine(
         "sqlite://",

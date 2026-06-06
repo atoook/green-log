@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlmodel import Field, SQLModel
@@ -23,7 +24,10 @@ class PlantPhoto(SQLModel, table=True):
         ),
     )
 
-    id: int | None = Field(default=None, primary_key=True)
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        sa_column=sa.Column(sa.Text(), primary_key=True, nullable=False),
+    )
     owner_user_id: str = Field(
         sa_column=sa.Column(
             sa.Text(),
@@ -38,8 +42,7 @@ class PlantPhoto(SQLModel, table=True):
             nullable=False,
         )
     )
-    image_url: str | None = Field(default=None)
-    storage_key: str | None = Field(default=None)
+    storage_key: str = Field(sa_column=sa.Column(sa.Text(), nullable=False))
     taken_date: date | None = Field(default=None)
     comment: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=utc_now, nullable=False)

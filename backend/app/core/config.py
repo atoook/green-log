@@ -20,6 +20,13 @@ class Settings(BaseSettings):
         default=None,
         alias="LEGACY_OWNER_BACKFILL_USER_ID",
     )
+    aws_access_key_id: SecretStr | None = Field(default=None, alias="AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: SecretStr | None = Field(
+        default=None,
+        alias="AWS_SECRET_ACCESS_KEY",
+    )
+    aws_region: str = Field(default="ap-northeast-1", alias="AWS_REGION")
+    s3_bucket_name: str | None = Field(default=None, alias="S3_BUCKET_NAME")
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",
@@ -34,6 +41,33 @@ class Settings(BaseSettings):
     @property
     def turso_auth_token_value(self) -> str | None:
         return self.turso_auth_token.get_secret_value() if self.turso_auth_token else None
+
+    @property
+    def aws_access_key_id_value(self) -> str | None:
+        return self.aws_access_key_id.get_secret_value() if self.aws_access_key_id else None
+
+    @property
+    def aws_secret_access_key_value(self) -> str | None:
+        return (
+            self.aws_secret_access_key.get_secret_value()
+            if self.aws_secret_access_key
+            else None
+        )
+
+    @property
+    def s3_upload_configured(self) -> bool:
+        return bool(
+            self.aws_access_key_id
+            and self.aws_secret_access_key
+            and self.aws_region
+            and self.s3_bucket_name
+        )
+
+    @property
+    def s3_public_base_url(self) -> str | None:
+        if not self.s3_bucket_name:
+            return None
+        return f"https://{self.s3_bucket_name}.s3.{self.aws_region}.amazonaws.com"
 
     @property
     def cors_origin_list(self) -> list[str]:

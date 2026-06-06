@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
@@ -27,17 +29,58 @@ def test_settings_reads_auth_runtime_configuration_from_environment(monkeypatch)
     assert settings.legacy_owner_backfill_user_id == "user-backfill-id"
 
 
+def test_settings_reads_s3_runtime_configuration_from_environment(monkeypatch):
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "dummy-access-key")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "dummy-secret-key")
+    monkeypatch.setenv("AWS_REGION", "ap-northeast-1")
+    monkeypatch.setenv("S3_BUCKET_NAME", "green-mate-photos")
+
+    settings = Settings()
+
+    assert isinstance(settings.aws_access_key_id, SecretStr)
+    assert settings.aws_access_key_id_value == "dummy-access-key"
+    assert isinstance(settings.aws_secret_access_key, SecretStr)
+    assert settings.aws_secret_access_key_value == "dummy-secret-key"
+    assert settings.aws_region == "ap-northeast-1"
+    assert settings.s3_bucket_name == "green-mate-photos"
+    assert settings.s3_public_base_url == (
+        "https://green-mate-photos.s3.ap-northeast-1.amazonaws.com"
+    )
+    assert settings.s3_upload_configured is True
+
+
 def test_settings_repr_masks_secret_values():
     settings = Settings(
         clerk_secret_key="dummy-clerk-key",
         clerk_webhook_secret="dummy-webhook-key",
+        aws_access_key_id="dummy-access-key",
+        aws_secret_access_key="dummy-secret-key",
     )
 
     rendered = repr(settings)
 
     assert "dummy-clerk-key" not in rendered
     assert "dummy-webhook-key" not in rendered
+    assert "dummy-access-key" not in rendered
+    assert "dummy-secret-key" not in rendered
     assert "**********" in rendered
+
+
+def test_photo_upload_runtime_dependencies_are_available():
+    import boto3
+    import python_multipart
+
+    assert boto3.__version__
+    assert python_multipart.__version__
+
+
+def test_env_example_documents_s3_runtime_configuration():
+    env_example = (Path(__file__).resolve().parents[1] / ".env.example").read_text()
+
+    assert "AWS_ACCESS_KEY_ID=" in env_example
+    assert "AWS_SECRET_ACCESS_KEY=" in env_example
+    assert "AWS_REGION=ap-northeast-1" in env_example
+    assert "S3_BUCKET_NAME=" in env_example
 
 
 def test_cors_preflight_allows_authorization_header():

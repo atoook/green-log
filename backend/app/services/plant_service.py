@@ -1,3 +1,5 @@
+from typing import Protocol
+
 from app.domain.plant_constraints import MAX_WATERING_CYCLE_DAYS
 from app.models.plant import Plant, utc_now
 from app.repositories.plant_repository import PlantReadRow, PlantRepository
@@ -12,9 +14,18 @@ class PlantNotFoundError(LookupError):
     pass
 
 
+class PlantImageUrlResolver(Protocol):
+    def public_url(self, object_key: str) -> str: ...
+
+
 class PlantService:
-    def __init__(self, repository: PlantRepository) -> None:
+    def __init__(
+        self,
+        repository: PlantRepository,
+        image_url_resolver: PlantImageUrlResolver | None = None,
+    ) -> None:
         self.repository = repository
+        self.image_url_resolver = image_url_resolver
 
     def create_plant(self, owner_user_id: str, payload: PlantCreate) -> PlantRead:
         name = payload.name.strip()
@@ -37,7 +48,7 @@ class PlantService:
 
     def list_plants(self, owner_user_id: str) -> list[PlantRead]:
         return [
-            _row_to_read(row)
+            self._row_to_read(row)
             for row in self.repository.list_with_cover_image(owner_user_id)
         ]
 
@@ -45,7 +56,7 @@ class PlantService:
         plant = self.repository.get_by_id_with_cover_image(owner_user_id, plant_id)
         if plant is None:
             raise PlantNotFoundError("Plant not found")
-        return _row_to_read(plant)
+        return self._row_to_read(plant)
 
     def update_plant(
         self,
@@ -62,7 +73,21 @@ class PlantService:
         )
         if updated is None:
             raise PlantNotFoundError("Plant not found")
-        return _row_to_read(updated)
+        return self._row_to_read(updated)
+
+    def _row_to_read(self, row: PlantReadRow) -> PlantRead:
+        return _plant_to_read(
+            row.plant,
+            image_url=self._cover_image_url(row.cover_storage_key),
+        )
+
+    def _cover_image_url(self, storage_key: str | None) -> str | None:
+        if storage_key is None or self.image_url_resolver is None:
+            return None
+        try:
+            return self.image_url_resolver.public_url(storage_key)
+        except Exception:
+            return None
 
     @staticmethod
     def normalize_update_payload(payload: PlantUpdate) -> PlantUpdate:
@@ -90,10 +115,6 @@ class PlantService:
             normalized["watering_cycle_days"] = payload.watering_cycle_days
 
         return PlantUpdate.model_validate(normalized)
-
-
-def _row_to_read(row: PlantReadRow) -> PlantRead:
-    return _plant_to_read(row.plant, image_url=row.cover_image_url)
 
 
 def _plant_to_read(plant: Plant, image_url: str | None) -> PlantRead:

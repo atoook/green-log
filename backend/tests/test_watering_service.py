@@ -109,7 +109,9 @@ def test_upcoming_care_uses_representative_photo_url(test_engine):
         session.commit()
 
         care = _service(session).get_upcoming_care("owner-a")
-        assert care.sections[0].items[0].plant.image_url == "https://example.com/cover.jpg"
+        assert care.sections[0].items[0].plant.image_url == (
+            "https://cdn.example.invalid/cover.jpg"
+        )
 
         plant.cover_photo_id = other_owner_photo.id
         session.add(plant)
@@ -554,6 +556,7 @@ def _service(
         "plant_repository": PlantRepository(session),
         "watering_repository": WateringRepository(session),
         "today_provider": lambda: FIXED_TODAY,
+        "image_url_resolver": _FakeImageUrlResolver(),
     }
     if now_provider is not None:
         kwargs["now_provider"] = now_provider
@@ -612,7 +615,7 @@ def _add_photo(
     owner_user_id: str,
     plant_id: int | None,
     *,
-    image_url: str | None,
+    image_url: str,
 ) -> PlantPhoto:
     if plant_id is None:
         raise ValueError("plant_id must be persisted before creating photos")
@@ -620,12 +623,17 @@ def _add_photo(
     photo = PlantPhoto(
         owner_user_id=owner_user_id,
         plant_id=plant_id,
-        image_url=image_url,
+        storage_key=image_url.removeprefix("https://example.com/"),
     )
     session.add(photo)
     session.commit()
     session.refresh(photo)
     return photo
+
+
+class _FakeImageUrlResolver:
+    def public_url(self, object_key: str) -> str:
+        return f"https://cdn.example.invalid/{object_key}"
 
 
 def _as_utc(value: datetime) -> datetime:

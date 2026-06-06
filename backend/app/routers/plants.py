@@ -5,16 +5,21 @@ from sqlmodel import Session
 
 from app.auth.dependencies import get_current_user
 from app.auth.types import CurrentUser
+from app.core.config import Settings, get_settings
 from app.db.session import get_session
 from app.repositories.plant_repository import PlantRepository
 from app.schemas.plant import PlantCreate, PlantRead, PlantUpdate
 from app.services.plant_service import PlantNotFoundError, PlantService, PlantValidationError
+from app.storage.s3 import StorageUrlResolver
 
 router = APIRouter(prefix="/plants", tags=["plants"])
 
 
-def get_plant_service(session: Annotated[Session, Depends(get_session)]) -> PlantService:
-    return PlantService(PlantRepository(session))
+def get_plant_service(
+    session: Annotated[Session, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> PlantService:
+    return PlantService(PlantRepository(session), StorageUrlResolver(settings))
 
 
 @router.get("", response_model=list[PlantRead])
