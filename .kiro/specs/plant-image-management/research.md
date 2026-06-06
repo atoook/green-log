@@ -291,3 +291,17 @@ POST /plants/{plant_id}/photos
 - `plant_photos.id` を UUID にすることで object key と DB photo id を一致させやすくなる。一方で、`plants.cover_photo_id` も同じ UUID 型へ合わせる必要があるため、model、schema、migration、既存 repository test の更新範囲に含める。
 - 初期 public read と将来の署名付き URL 移行を両立するため、frontend は URL の永続性を前提にせず、API response の表示用 URL を利用する形にする。
 - `storage_key` を user-facing response に含めるかは慎重に扱う。現行方針では内部 field 非公開を維持し、frontend には表示用 URL と写真 ID、撮影日、コメント、代表画像状態だけを返す案が安全。
+
+## Discovery Update For Design Phase
+- **Discovery type**: Extension with complex external integration.
+- **FastAPI upload**: 公式 docs では file upload は form data として扱われ、`python-multipart` が必要。`UploadFile` は spooled file を使い、画像のような大きめの file に適している。
+- **Boto3 S3 upload**: `upload_fileobj` は file-like object を S3 key へ upload でき、必要に応じて managed multipart transfer を行う。FastAPI `UploadFile.file` との接続に適している。
+- **S3 Object Ownership**: Bucket owner enforced では ACL が無効化され、bucket owner が object を所有し、access は policy で管理される。upload 時は ACL を指定しない方針にする。
+- **API decision**: ユーザー方針の `POST /photos/upload` を維持し、multipart form の `plantId` field で対象植物を受け取る。API は owner と quota を検証し、`plants/{plant_id}/{photo_uuid}.{ext}` の object key を生成して返す。
+- **Consistency decision**: upload API と registration API は分離するが、registration API でも quota と owner を再検証する。S3 upload 後に registration が失敗した場合は orphan object が残り得るため、registration 失敗時の frontend cleanup は初期実装では保証せず、operator cleanup をリスクとして記録する。削除は S3 delete 成功後に DB delete を行い、S3 delete 失敗時は DB record を維持する。
+- **Synthesis**: 写真操作、代表画像、quota、URL 生成はすべて「owner-scoped plant photo lifecycle」の variation として扱う。backend は写真専用 service/repository/storage client に分け、plant read の `imageUrl` 互換だけ既存 plant read path に残す hybrid approach を採用する。
+
+## References
+- [FastAPI Request Files](https://fastapi.tiangolo.com/tutorial/request-files/) — `UploadFile` と `python-multipart` 前提。
+- [Boto3 S3 upload_fileobj](https://docs.aws.amazon.com/boto3/latest/reference/services/s3/bucket/upload_fileobj.html) — file-like object upload。
+- [Amazon S3 Object Ownership](https://docs.aws.amazon.com/AmazonS3/latest/userguide/about-object-ownership.html) — Bucket owner enforced と ACL disabled 方針。
