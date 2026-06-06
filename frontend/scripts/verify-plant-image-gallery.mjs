@@ -75,7 +75,7 @@ async function verifyGalleryRender(PlantImageGallery) {
   })
   assert.match(listed, /1枚/)
   assert.doesNotMatch(listed, /\/ 5枚/)
-  assert.match(listed, /代表/)
+  assert.match(listed, /サムネイル/)
   assert.match(listed, /葉が増えた/)
 }
 
@@ -86,7 +86,7 @@ async function verifyGalleryDeleteFlow() {
   )
   assert.match(source, /window\.confirm\(message\)/)
   assert.match(source, /emit\('delete', photo\.id\)/)
-  assert.match(source, /代表画像も未設定に戻ります/)
+  assert.match(source, /サムネイルも未設定に戻ります/)
   assert.doesNotMatch(source, /pendingDeletePhoto/)
 }
 

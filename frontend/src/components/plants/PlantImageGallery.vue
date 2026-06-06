@@ -65,7 +65,7 @@ function submitPhoto(): void {
 
 function confirmDelete(photo: PlantPhoto): void {
   const message = photo.isCover
-    ? 'この画像を削除します。代表画像も未設定に戻ります。'
+    ? 'この画像を削除します。サムネイルも未設定に戻ります。'
     : 'この画像を削除します。'
   if (!window.confirm(message)) {
     return
@@ -124,7 +124,7 @@ function markImageFailed(photoId: string): void {
             v-if="photo.isCover"
             class="absolute left-2 top-2 rounded bg-leaf-700 px-2 py-1 text-xs font-semibold text-white"
           >
-            代表
+            サムネイル
           </span>
         </div>
 
@@ -140,7 +140,7 @@ function markImageFailed(photoId: string): void {
             :disabled="photo.isCover || isSettingCover"
             @click="emit('setCover', photo.id)"
           >
-            代表にする
+            サムネイルにする
           </button>
           <button
             class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
