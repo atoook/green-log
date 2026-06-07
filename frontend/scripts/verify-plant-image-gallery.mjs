@@ -222,6 +222,8 @@ async function verifyPageIntegration() {
   assert.match(source, /usePlantPhotos/)
   assert.match(source, /onCoverImageChange: loadPlant/)
   assert.match(source, /@add="addPhoto"/)
+  assert.match(source, /:is-updating-metadata="isUpdatingMetadata"/)
+  assert.match(source, /@update-metadata="updatePhotoMetadata"/)
   assert.match(source, /@set-cover="setCoverPhoto"/)
   assert.match(source, /@delete="deletePhoto"/)
 }

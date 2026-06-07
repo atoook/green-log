@@ -126,7 +126,7 @@
   - S3 実 bucket がなくても通常 test suite は test double で実行でき、S3 adapter 単位の動作は分離して検証できる。
   - _Requirements: 2.5, 4.3, 4.4, 5.5, 7.2, 7.3, 7.5, 8.6, 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 5. 画像メタ情報編集を追加する
+- [x] 5. 画像メタ情報編集を追加する
 - [x] 5.1 Backend のメタ情報更新 contract を追加する
   - 撮影日とコメントだけを受け取る更新入力を定義し、植物 ID、object key、画像 URL、代表画像状態、owner id は入力で受け取らない。
   - 更新 response は既存の画像表示 response と同じ形で返り、storage key や内部 owner 情報を露出しない。
@@ -170,7 +170,7 @@
   - _Boundary: PlantImageGallery_
   - _Depends: 5.4_
 
-- [ ] 5.6 植物詳細画面へメタ情報編集 flow を統合して検証する
+- [x] 5.6 植物詳細画面へメタ情報編集 flow を統合して検証する
   - 植物詳細画面から画像メタ情報を更新でき、植物基本情報編集や水やり error surface と混ざらない。
   - 代表画像のメタ情報を編集しても一覧サムネイルの URL 同期 callback は不要で、代表画像状態は維持される。
   - 画像メタ情報更新、追加、削除、代表画像設定の各 action state が互いに不自然に干渉しないことを page-level regression で確認できる。
