@@ -62,7 +62,7 @@ def register_plant_photo(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
-@router.put("/{plant_id}/cover-photo", response_model=PlantPhotoGalleryRead)
+@router.patch("/{plant_id}/cover-photo", response_model=PlantPhotoGalleryRead)
 def set_plant_cover_photo(
     plant_id: int,
     payload: PlantCoverPhotoUpdate,

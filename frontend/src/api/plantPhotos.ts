@@ -50,7 +50,7 @@ export function createPlantPhotosApiClient(
 
     setCoverPhoto(plantId: number, photoId: string): Promise<PlantPhotoGallery> {
       return apiClient.request<PlantPhotoGallery>(`/plants/${plantId}/cover-photo`, {
-        method: 'PUT',
+        method: 'PATCH',
         body: JSON.stringify({ photoId }),
       })
     },

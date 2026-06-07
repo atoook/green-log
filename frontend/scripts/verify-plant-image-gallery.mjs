@@ -171,6 +171,8 @@ async function verifyApiClientSource() {
   assert.match(apiClientSource, /body instanceof FormData/)
   assert.match(plantPhotosSource, /new FormData\(\)/)
   assert.match(plantPhotosSource, /\/photos\/upload/)
+  assert.match(plantPhotosSource, /method: 'PATCH'/)
+  assert.doesNotMatch(plantPhotosSource, /method: 'PUT'/)
   assert.doesNotMatch(plantPhotosSource, /ownerUserId|owner_user_id|storageKey|storage_key/)
 }
 

@@ -136,7 +136,7 @@ def test_photo_api_routes_are_protected_and_call_owner_scoped_service(
         "/plants/1/photos",
         json={"objectKey": "plants/1/photo-id.webp", "comment": "葉が増えた"},
     )
-    cover = client.put(
+    cover = client.patch(
         "/plants/1/cover-photo",
         json={"photoId": "4bb385d0-eef0-4985-b50f-1e3da1fdf54f"},
     )
@@ -259,7 +259,7 @@ def test_photo_api_integration_happy_path_uses_owner_scoped_domain_service(
         "unlimited": False,
     }
 
-    cover = client.put(f"/plants/{plant_id}/cover-photo", json={"photoId": photo_id})
+    cover = client.patch(f"/plants/{plant_id}/cover-photo", json={"photoId": photo_id})
     assert cover.status_code == 200
     assert cover.json()["coverPhotoId"] == photo_id
 
@@ -308,7 +308,7 @@ def test_photo_api_integration_hides_other_owner_photo_and_plant(
             f"/plants/{plant_id}/photos",
             json={"objectKey": f"plants/{plant_id}/other.webp"},
         ),
-        owner_b_client.put(f"/plants/{plant_id}/cover-photo", json={"photoId": photo_id}),
+        owner_b_client.patch(f"/plants/{plant_id}/cover-photo", json={"photoId": photo_id}),
         owner_b_client.delete(f"/plants/{plant_id}/photos/{photo_id}"),
     ]
 
@@ -407,6 +407,8 @@ def test_photo_openapi_exposes_photo_routes_without_internal_gallery_fields():
     assert "/plants/{plant_id}/photos" in openapi["paths"]
     assert "/plants/{plant_id}/cover-photo" in openapi["paths"]
     assert "/plants/{plant_id}/photos/{photo_id}" in openapi["paths"]
+    assert "patch" in openapi["paths"]["/plants/{plant_id}/cover-photo"]
+    assert "put" not in openapi["paths"]["/plants/{plant_id}/cover-photo"]
 
     component_text = str(openapi.get("components", {}))
     assert "ownerUserId" not in component_text

@@ -74,6 +74,8 @@ def test_app_exposes_photo_routes_without_internal_photo_fields():
     assert "/plants/{plant_id}/photos" in app_paths
     assert "/plants/{plant_id}/cover-photo" in app_paths
     assert "/plants/{plant_id}/photos/{photo_id}" in app_paths
+    assert "patch" in openapi["paths"]["/plants/{plant_id}/cover-photo"]
+    assert "put" not in openapi["paths"]["/plants/{plant_id}/cover-photo"]
     assert "storageKey" not in component_text
     assert "storage_key" not in component_text
     assert "ownerUserId" not in component_text
