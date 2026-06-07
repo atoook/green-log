@@ -14,6 +14,7 @@ from app.schemas.plant_photo import (
     PlantPhotoGalleryRead,
     PlantPhotoQuotaRead,
     PlantPhotoRead,
+    PlantPhotoUpdate,
     PlantPhotoUploadRead,
     PlantCoverPhotoUpdate,
 )
@@ -119,5 +120,35 @@ def test_photo_create_schema_rejects_internal_fields():
             {
                 "objectKey": "plants/1/photo-id.webp",
                 "ownerUserId": "internal-owner",
+            }
+        )
+
+
+def test_photo_update_schema_allows_only_editable_metadata_fields():
+    update = PlantPhotoUpdate.model_validate(
+        {
+            "takenDate": "2026-06-02",
+            "comment": "撮影日を直した",
+        }
+    )
+
+    assert update.taken_date == date(2026, 6, 2)
+    assert update.comment == "撮影日を直した"
+    assert update.model_dump(mode="json", by_alias=True) == {
+        "takenDate": "2026-06-02",
+        "comment": "撮影日を直した",
+    }
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["plantId", "objectKey", "imageUrl", "isCover", "ownerUserId", "storageKey"],
+)
+def test_photo_update_schema_rejects_internal_or_non_metadata_fields(field):
+    with pytest.raises(ValidationError):
+        PlantPhotoUpdate.model_validate(
+            {
+                "takenDate": "2026-06-02",
+                field: "unexpected",
             }
         )
