@@ -18,7 +18,7 @@ from app.services.plant_photo_service import (
     PlantPhotoService,
 )
 from app.domain.plant_photo_constraints import MAX_PHOTO_UPLOAD_BYTES
-from app.storage.s3 import StorageOperationError
+from app.storage.object_storage import StorageOperationError
 from app.models.plant_photo import PlantPhoto
 from app.models.user import User
 from app.repositories.plant_photo_repository import PlantPhotoRepository

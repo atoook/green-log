@@ -20,13 +20,21 @@ class Settings(BaseSettings):
         default=None,
         alias="LEGACY_OWNER_BACKFILL_USER_ID",
     )
-    aws_access_key_id: SecretStr | None = Field(default=None, alias="AWS_ACCESS_KEY_ID")
-    aws_secret_access_key: SecretStr | None = Field(
+    storage_access_key_id: SecretStr | None = Field(
         default=None,
-        alias="AWS_SECRET_ACCESS_KEY",
+        alias="STORAGE_ACCESS_KEY_ID",
     )
-    aws_region: str = Field(default="ap-northeast-1", alias="AWS_REGION")
-    s3_bucket_name: str | None = Field(default=None, alias="S3_BUCKET_NAME")
+    storage_secret_access_key: SecretStr | None = Field(
+        default=None,
+        alias="STORAGE_SECRET_ACCESS_KEY",
+    )
+    storage_region: str = Field(default="ap-northeast-1", alias="STORAGE_REGION")
+    storage_bucket_name: str | None = Field(default=None, alias="STORAGE_BUCKET_NAME")
+    storage_endpoint_url: str | None = Field(default=None, alias="STORAGE_ENDPOINT_URL")
+    storage_public_base_url: str | None = Field(
+        default=None,
+        alias="STORAGE_PUBLIC_BASE_URL",
+    )
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",
@@ -43,31 +51,35 @@ class Settings(BaseSettings):
         return self.turso_auth_token.get_secret_value() if self.turso_auth_token else None
 
     @property
-    def aws_access_key_id_value(self) -> str | None:
-        return self.aws_access_key_id.get_secret_value() if self.aws_access_key_id else None
-
-    @property
-    def aws_secret_access_key_value(self) -> str | None:
+    def storage_access_key_id_value(self) -> str | None:
         return (
-            self.aws_secret_access_key.get_secret_value()
-            if self.aws_secret_access_key
+            self.storage_access_key_id.get_secret_value()
+            if self.storage_access_key_id
             else None
         )
 
     @property
-    def s3_upload_configured(self) -> bool:
-        return bool(
-            self.aws_access_key_id
-            and self.aws_secret_access_key
-            and self.aws_region
-            and self.s3_bucket_name
+    def storage_secret_access_key_value(self) -> str | None:
+        return (
+            self.storage_secret_access_key.get_secret_value()
+            if self.storage_secret_access_key
+            else None
         )
 
     @property
-    def s3_public_base_url(self) -> str | None:
-        if not self.s3_bucket_name:
-            return None
-        return f"https://{self.s3_bucket_name}.s3.{self.aws_region}.amazonaws.com"
+    def storage_upload_configured(self) -> bool:
+        return bool(
+            self.storage_access_key_id_value
+            and self.storage_secret_access_key_value
+            and self.storage_region
+            and self.storage_bucket_name
+        )
+
+    @property
+    def storage_resolved_public_base_url(self) -> str | None:
+        if self.storage_public_base_url:
+            return self.storage_public_base_url.rstrip("/")
+        return None
 
     @property
     def cors_origin_list(self) -> list[str]:

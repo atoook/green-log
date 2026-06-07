@@ -769,8 +769,11 @@ def test_list_and_detail_return_only_owned_cover_photo_url(
     override_current_user("owner-a")
     app.dependency_overrides[get_settings] = lambda: Settings(
         _env_file=None,
-        aws_region="ap-northeast-1",
-        s3_bucket_name="green-mate-photos",
+        storage_region="ap-northeast-1",
+        storage_bucket_name="green-mate-photos",
+        storage_public_base_url=(
+            "https://green-mate-photos.s3.ap-northeast-1.amazonaws.com"
+        ),
     )
     client = api_client
 

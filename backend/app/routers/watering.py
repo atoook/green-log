@@ -15,7 +15,7 @@ from app.services.watering_service import (
     WateringPlantNotFoundError,
     WateringService,
 )
-from app.storage.s3 import StorageUrlResolver
+from app.storage.object_storage import StorageUrlResolver
 
 router = APIRouter(prefix="/plants", tags=["watering"])
 

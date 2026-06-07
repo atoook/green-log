@@ -10,7 +10,7 @@ from app.db.session import get_session
 from app.repositories.plant_repository import PlantRepository
 from app.schemas.plant import PlantCreate, PlantRead, PlantUpdate
 from app.services.plant_service import PlantNotFoundError, PlantService, PlantValidationError
-from app.storage.s3 import StorageUrlResolver
+from app.storage.object_storage import StorageUrlResolver
 
 router = APIRouter(prefix="/plants", tags=["plants"])
 

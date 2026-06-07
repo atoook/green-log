@@ -17,7 +17,7 @@ from app.services.watering_service import (
     WateringHeatmapRangeError,
     WateringService,
 )
-from app.storage.s3 import StorageUrlResolver
+from app.storage.object_storage import StorageUrlResolver
 
 router = APIRouter(prefix="/care", tags=["care"])
 

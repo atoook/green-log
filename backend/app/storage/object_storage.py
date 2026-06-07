@@ -15,7 +15,7 @@ class StorageOperationError(RuntimeError):
     pass
 
 
-class S3ClientProtocol(Protocol):
+class ObjectStorageClientProtocol(Protocol):
     def put_object(self, **kwargs): ...
 
     def delete_object(self, **kwargs): ...
@@ -26,17 +26,17 @@ class StorageUrlResolver:
         self.settings = settings
 
     def public_url(self, object_key: str) -> str:
-        base_url = self.settings.s3_public_base_url
+        base_url = self.settings.storage_resolved_public_base_url
         if base_url is None:
             raise StorageConfigurationError("Image storage is not configured")
         return f"{base_url}/{quote(object_key, safe='/')}"
 
 
-class S3StorageClient:
+class ObjectStorageClient:
     def __init__(
         self,
         settings: Settings,
-        client: S3ClientProtocol | None = None,
+        client: ObjectStorageClientProtocol | None = None,
     ) -> None:
         self.settings = settings
         self._client = client
@@ -67,23 +67,26 @@ class S3StorageClient:
         except (BotoCoreError, ClientError) as exc:
             raise StorageOperationError("Image storage operation failed") from exc
 
-    def _configured_client(self) -> S3ClientProtocol:
+    def _configured_client(self) -> ObjectStorageClientProtocol:
         self._ensure_configured()
         if self._client is None:
-            self._client = boto3.client(
-                "s3",
-                region_name=self.settings.aws_region,
-                aws_access_key_id=self.settings.aws_access_key_id_value,
-                aws_secret_access_key=self.settings.aws_secret_access_key_value,
-            )
+            client_options = {
+                "region_name": self.settings.storage_region,
+                "aws_access_key_id": self.settings.storage_access_key_id_value,
+                "aws_secret_access_key": self.settings.storage_secret_access_key_value,
+            }
+            if self.settings.storage_endpoint_url:
+                client_options["endpoint_url"] = self.settings.storage_endpoint_url
+            self._client = boto3.client("s3", **client_options)
         return self._client
 
     def _ensure_configured(self) -> None:
-        if not self.settings.s3_upload_configured:
+        if not self.settings.storage_upload_configured:
             raise StorageConfigurationError("Image storage is not configured")
 
     def _bucket_name(self) -> str:
         self._ensure_configured()
-        if self.settings.s3_bucket_name is None:
+        bucket_name = self.settings.storage_bucket_name
+        if bucket_name is None:
             raise StorageConfigurationError("Image storage is not configured")
-        return self.settings.s3_bucket_name
+        return bucket_name

@@ -8,7 +8,7 @@ from app.db.session import get_session
 from app.repositories.plant_photo_repository import PlantPhotoRepository
 from app.repositories.user_repository import UserRepository
 from app.services.plant_photo_service import PlantPhotoService
-from app.storage.s3 import S3StorageClient, StorageUrlResolver
+from app.storage.object_storage import ObjectStorageClient, StorageUrlResolver
 
 
 def get_plant_photo_service(
@@ -18,6 +18,6 @@ def get_plant_photo_service(
     return PlantPhotoService(
         photo_repository=PlantPhotoRepository(session),
         user_repository=UserRepository(session),
-        storage=S3StorageClient(settings),
+        storage=ObjectStorageClient(settings),
         url_resolver=StorageUrlResolver(settings),
     )

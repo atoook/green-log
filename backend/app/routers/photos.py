@@ -13,7 +13,7 @@ from app.services.plant_photo_service import (
     PlantPhotoService,
     PlantPhotoValidationError,
 )
-from app.storage.s3 import StorageConfigurationError, StorageOperationError
+from app.storage.object_storage import StorageConfigurationError, StorageOperationError
 
 router = APIRouter(prefix="/photos", tags=["photos"])
 
