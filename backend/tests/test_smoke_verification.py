@@ -65,7 +65,7 @@ def test_verify_plant_crud_uses_application_user_upsert(monkeypatch):
     ]
 
     assert result.created_plant_id >= 1
-    assert result.created_plant_photo_id >= 1
+    assert result.created_plant_photo_id
     assert result.created_watering_record_id >= 1
     assert len(observed_clerk_user_ids) == 3
     assert observed_clerk_user_ids[0] == observed_clerk_user_ids[1]

@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from app.domain.plant_constraints import MAX_WATERING_CYCLE_DAYS
 from app.models import Plant, WateringRecord
 from app.repositories.plant_repository import PlantRepository
+from app.services.plant_service import PlantImageUrlResolver
 from app.repositories.watering_repository import WateringRepository
 from app.schemas.watering import (
     PlantWateringDetailRead,
@@ -60,11 +61,13 @@ class WateringService:
         watering_repository: WateringRepository,
         today_provider: Callable[[], date] = app_today,
         now_provider: Callable[[], datetime] = utc_now,
+        image_url_resolver: PlantImageUrlResolver | None = None,
     ) -> None:
         self.plant_repository = plant_repository
         self.watering_repository = watering_repository
         self.today_provider = today_provider
         self.now_provider = now_provider
+        self.image_url_resolver = image_url_resolver
 
     def get_upcoming_care(self, owner_user_id: str, days: int = 1) -> UpcomingCareRead:
         if days < MIN_UPCOMING_CARE_DAYS or days > MAX_UPCOMING_CARE_DAYS:
@@ -89,7 +92,7 @@ class WateringService:
                     self._build_upcoming_care_item(
                         plant,
                         state,
-                        image_url=row.cover_image_url,
+                        image_url=self._cover_image_url(row.cover_storage_key),
                     )
                 )
                 continue
@@ -98,7 +101,7 @@ class WateringService:
                     self._build_upcoming_care_item(
                         plant,
                         state,
-                        image_url=row.cover_image_url,
+                        image_url=self._cover_image_url(row.cover_storage_key),
                     ),
                 )
 
@@ -271,6 +274,14 @@ class WateringService:
                 watering_cycle_days=plant.watering_cycle_days,
             ),
         )
+
+    def _cover_image_url(self, storage_key: str | None) -> str | None:
+        if storage_key is None or self.image_url_resolver is None:
+            return None
+        try:
+            return self.image_url_resolver.public_url(storage_key)
+        except Exception:
+            return None
 
     def _build_state(self, plant: Plant, today: date) -> PlantWateringStateRead:
         last_watered_at = _as_utc(plant.last_watered_at)

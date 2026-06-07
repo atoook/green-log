@@ -14,7 +14,7 @@ from app.schemas.plant import PlantUpdate
 @dataclass(frozen=True)
 class PlantReadRow:
     plant: Plant
-    cover_image_url: str | None
+    cover_storage_key: str | None
 
 
 class PlantRepository:
@@ -42,8 +42,8 @@ class PlantRepository:
             .order_by(Plant.id)
         )
         return [
-            PlantReadRow(plant=plant, cover_image_url=cover_image_url)
-            for plant, cover_image_url in self.session.exec(statement).all()
+            PlantReadRow(plant=plant, cover_storage_key=cover_storage_key)
+            for plant, cover_storage_key in self.session.exec(statement).all()
         ]
 
     def get_by_id(self, owner_user_id: str, plant_id: int) -> Plant | None:
@@ -65,8 +65,8 @@ class PlantRepository:
         row = self.session.exec(statement).first()
         if row is None:
             return None
-        plant, cover_image_url = row
-        return PlantReadRow(plant=plant, cover_image_url=cover_image_url)
+        plant, cover_storage_key = row
+        return PlantReadRow(plant=plant, cover_storage_key=cover_storage_key)
 
     def update_last_watered_at(
         self,
@@ -118,4 +118,4 @@ class PlantRepository:
             PlantPhoto.owner_user_id == owner_user_id,
             PlantPhoto.plant_id == Plant.id,
         )
-        return select(Plant, PlantPhoto.image_url).outerjoin(PlantPhoto, cover_join)
+        return select(Plant, PlantPhoto.storage_key).outerjoin(PlantPhoto, cover_join)

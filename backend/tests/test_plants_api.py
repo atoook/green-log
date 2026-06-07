@@ -5,7 +5,7 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.domain.plant_constraints import MAX_WATERING_CYCLE_DAYS
 from app.main import app
 from app.models.plant import Plant
@@ -767,6 +767,14 @@ def test_list_and_detail_return_only_owned_cover_photo_url(
     test_engine,
 ):
     override_current_user("owner-a")
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        _env_file=None,
+        storage_region="ap-northeast-1",
+        storage_bucket_name="green-mate-photos",
+        storage_public_base_url=(
+            "https://green-mate-photos.s3.ap-northeast-1.amazonaws.com"
+        ),
+    )
     client = api_client
 
     create_response = client.post(
@@ -783,24 +791,17 @@ def test_list_and_detail_return_only_owned_cover_photo_url(
             PlantPhoto(
                 owner_user_id="owner-b",
                 plant_id=plant_id,
-                image_url="https://example.com/other-owner.jpg",
+                storage_key=f"plants/{plant_id}/other-owner.jpg",
             )
         )
         same_owner_cover = PlantPhoto(
             owner_user_id="owner-a",
             plant_id=plant_id,
-            image_url="https://example.com/cover.jpg",
-        )
-        empty_cover = PlantPhoto(
-            owner_user_id="owner-a",
-            plant_id=plant_id,
-            image_url=None,
+            storage_key=f"plants/{plant_id}/cover.jpg",
         )
         session.add(same_owner_cover)
-        session.add(empty_cover)
         session.commit()
         session.refresh(same_owner_cover)
-        session.refresh(empty_cover)
 
         plant.cover_photo_id = same_owner_cover.id
         session.add(plant)
@@ -809,10 +810,14 @@ def test_list_and_detail_return_only_owned_cover_photo_url(
     list_response = client.get("/plants")
     detail_response = client.get(f"/plants/{plant_id}")
 
+    cover_url = (
+        "https://green-mate-photos.s3.ap-northeast-1.amazonaws.com/"
+        f"plants/{plant_id}/cover.jpg"
+    )
     assert list_response.status_code == 200
-    assert list_response.json()[0]["imageUrl"] == "https://example.com/cover.jpg"
+    assert list_response.json()[0]["imageUrl"] == cover_url
     assert detail_response.status_code == 200
-    assert detail_response.json()["imageUrl"] == "https://example.com/cover.jpg"
+    assert detail_response.json()["imageUrl"] == cover_url
     assert_no_owner_fields(detail_response.json())
 
     with Session(test_engine) as session:
@@ -829,18 +834,7 @@ def test_list_and_detail_return_only_owned_cover_photo_url(
     assert mismatched_detail_response.status_code == 200
     assert mismatched_detail_response.json()["imageUrl"] is None
 
-    with Session(test_engine) as session:
-        plant = session.get(Plant, plant_id)
-        assert plant is not None
-        empty_cover = session.exec(
-            select(PlantPhoto).where(
-                PlantPhoto.owner_user_id == "owner-a",
-                PlantPhoto.image_url.is_(None),
-            )
-        ).one()
-        plant.cover_photo_id = empty_cover.id
-        session.add(plant)
-        session.commit()
+    app.dependency_overrides[get_settings] = lambda: Settings(_env_file=None)
 
     empty_url_detail_response = client.get(f"/plants/{plant_id}")
     assert empty_url_detail_response.status_code == 200
@@ -1013,7 +1007,6 @@ def test_plant_route_policy_only_exposes_owned_plant_endpoints():
             "skip",
             "defer",
             "growth",
-            "photo",
             "share",
             "care-type",
             "fertilizer",

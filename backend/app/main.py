@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.routers.care import router as care_router
+from app.routers.photos import router as photos_router
+from app.routers.plant_photos import router as plant_photos_router
 from app.routers.plants import router as plants_router
 from app.routers.watering import router as watering_router
 from app.routers.webhooks import router as webhooks_router
@@ -22,6 +24,8 @@ app.add_middleware(
 )
 
 app.include_router(plants_router)
+app.include_router(photos_router)
+app.include_router(plant_photos_router)
 app.include_router(care_router)
 app.include_router(watering_router)
 app.include_router(webhooks_router)
