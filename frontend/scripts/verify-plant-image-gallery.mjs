@@ -62,8 +62,17 @@ async function verifyGalleryRender(PlantImageGallery) {
           isCover: true,
           createdAt: '2026-06-01T09:30:00Z',
         },
+        {
+          id: 'photo-2',
+          plantId: 1,
+          imageUrl: 'https://cdn.example.invalid/plants/1/photo-2.webp',
+          takenDate: '2026-06-02',
+          comment: '新しい芽が出てきた。\n葉の色も濃くなってきたので、来週も同じ角度から撮影して比較したい。',
+          isCover: false,
+          createdAt: '2026-06-02T09:30:00Z',
+        },
       ],
-      quota: { currentCount: 1, maxCount: null, unlimited: true },
+      quota: { currentCount: 2, maxCount: null, unlimited: true },
       coverPhotoId: 'photo-1',
     },
     isLoading: false,
@@ -73,10 +82,14 @@ async function verifyGalleryRender(PlantImageGallery) {
     error: null,
     actionError: null,
   })
-  assert.match(listed, /1枚/)
+  assert.match(listed, /2枚/)
   assert.doesNotMatch(listed, /\/ 5枚/)
   assert.match(listed, /サムネイル/)
   assert.match(listed, /葉が増えた/)
+  assert.match(listed, /新しい芽が出てきた。 葉の色も濃くなってきたので、来週も同じ角度/)
+  assert.match(listed, /もっと見る/)
+  assert.doesNotMatch(listed, /absolute bottom-0 right-0/)
+  assert.doesNotMatch(listed, /bg-white pl-2/)
 }
 
 async function verifyGalleryDeleteFlow() {
@@ -87,6 +100,8 @@ async function verifyGalleryDeleteFlow() {
   assert.match(source, /window\.confirm\(message\)/)
   assert.match(source, /emit\('delete', photo\.id\)/)
   assert.match(source, /サムネイルも未設定に戻ります/)
+  assert.match(source, /閉じる/)
+  assert.match(source, /class="ml-1 inline text-xs/)
   assert.doesNotMatch(source, /pendingDeletePhoto/)
 }
 

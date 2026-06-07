@@ -24,6 +24,8 @@ const selectedFile = ref<File | null>(null)
 const takenDate = ref('')
 const comment = ref('')
 const failedImageIds = ref(new Set<string>())
+const expandedCommentIds = ref(new Set<string>())
+const collapsedCommentLength = 32
 
 const photos = computed(() => props.gallery?.photos ?? [])
 const quota = computed(() => props.gallery?.quota ?? null)
@@ -75,6 +77,32 @@ function confirmDelete(photo: PlantPhoto): void {
 
 function markImageFailed(photoId: string): void {
   failedImageIds.value = new Set(failedImageIds.value).add(photoId)
+}
+
+function shouldCollapseComment(value: string): boolean {
+  return value.includes('\n') || value.length > collapsedCommentLength
+}
+
+function collapsedCommentPreview(value: string): string {
+  const normalized = value.replace(/\s+/g, ' ').trim()
+  if (normalized.length <= collapsedCommentLength) {
+    return normalized
+  }
+  return `${normalized.slice(0, collapsedCommentLength)}...`
+}
+
+function isCommentExpanded(photoId: string): boolean {
+  return expandedCommentIds.value.has(photoId)
+}
+
+function toggleComment(photoId: string): void {
+  const next = new Set(expandedCommentIds.value)
+  if (next.has(photoId)) {
+    next.delete(photoId)
+  } else {
+    next.add(photoId)
+  }
+  expandedCommentIds.value = next
 }
 </script>
 
@@ -130,7 +158,36 @@ function markImageFailed(photoId: string): void {
 
         <div class="grid gap-1 text-sm text-stone-700">
           <p>{{ photo.takenDate || photo.createdAt.slice(0, 10) }}</p>
-          <p v-if="photo.comment" class="whitespace-pre-wrap">{{ photo.comment }}</p>
+          <div v-if="photo.comment" class="grid gap-1">
+            <div
+              v-if="shouldCollapseComment(photo.comment) && !isCommentExpanded(photo.id)"
+              class="text-sm text-stone-700"
+            >
+              <p class="break-words">
+                <span>{{ collapsedCommentPreview(photo.comment) }}</span>
+                <button
+                  class="ml-1 inline text-xs font-semibold text-stone-500 underline underline-offset-2 hover:text-stone-700"
+                  type="button"
+                  aria-expanded="false"
+                  @click="toggleComment(photo.id)"
+                >
+                  もっと見る
+                </button>
+              </p>
+            </div>
+            <p v-else class="line-clamp-none whitespace-pre-wrap break-words">
+              <span>{{ photo.comment }}</span>
+              <button
+                v-if="shouldCollapseComment(photo.comment)"
+                class="ml-1 inline text-xs font-semibold text-stone-500 underline underline-offset-2 hover:text-stone-700"
+                type="button"
+                aria-expanded="true"
+                @click="toggleComment(photo.id)"
+              >
+                閉じる
+              </button>
+            </p>
+          </div>
         </div>
 
         <div class="flex flex-wrap gap-2">
