@@ -147,6 +147,14 @@ async function verifyComposable(usePlantPhotos) {
             createdAt: '2026-06-01T09:30:00Z',
           }
         },
+        updatePlantPhotoMetadata: async (id, photoId, input) => {
+          calls.push(['update', id, photoId, input.takenDate, input.comment])
+          return {
+            ...gallery.photos[0],
+            takenDate: input.takenDate ?? null,
+            comment: input.comment ?? null,
+          }
+        },
         listPlantPhotos: async () => gallery,
         setCoverPhoto: async (id, photoId) => {
           calls.push(['cover', id, photoId])
@@ -165,16 +173,22 @@ async function verifyComposable(usePlantPhotos) {
     file: new File(['image'], 'photo.webp', { type: 'image/webp' }),
     comment: '新しい葉',
   })
+  await composable.updatePhotoMetadata('photo-1', {
+    takenDate: '2026-06-03',
+    comment: '撮影日を直した',
+  })
   await composable.deletePhoto('photo-1')
   await composable.setCoverPhoto('new-photo')
 
   assert.deepEqual(calls, [
     ['upload', 1, 'photo.webp'],
     ['register', 1, 'plants/1/new-photo.webp', '新しい葉'],
+    ['update', 1, 'photo-1', '2026-06-03', '撮影日を直した'],
     ['delete', 1, 'photo-1'],
     ['cover', 1, 'new-photo'],
   ])
   assert.equal(coverCallbackCount, 2)
+  assert.equal(composable.isUpdatingMetadata.value, false)
   assert.equal(composable.actionError.value, null)
 }
 
@@ -186,6 +200,8 @@ async function verifyApiClientSource() {
   assert.match(apiClientSource, /body instanceof FormData/)
   assert.match(plantPhotosSource, /new FormData\(\)/)
   assert.match(plantPhotosSource, /\/photos\/upload/)
+  assert.match(plantPhotosSource, /updatePlantPhotoMetadata/)
+  assert.match(plantPhotosSource, /`\/plants\/\$\{plantId\}\/photos\/\$\{photoId\}`/)
   assert.match(plantPhotosSource, /method: 'PATCH'/)
   assert.doesNotMatch(plantPhotosSource, /method: 'PUT'/)
   assert.doesNotMatch(plantPhotosSource, /ownerUserId|owner_user_id|storageKey|storage_key/)

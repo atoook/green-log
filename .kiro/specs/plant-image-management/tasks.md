@@ -152,7 +152,7 @@
   - _Boundary: plant_photos.py_
   - _Depends: 5.2_
 
-- [ ] 5.4 Frontend API と gallery state にメタ情報更新を追加する
+- [x] 5.4 Frontend API と gallery state にメタ情報更新を追加する
   - 写真 API client が typed JSON request で撮影日・コメントだけを送信できる。
   - gallery composable がメタ情報更新中状態と action error を既存の追加・削除・代表画像設定と分けて扱える。
   - 更新成功後に gallery を再取得し、撮影日変更後の表示順と画面表示が更新される。

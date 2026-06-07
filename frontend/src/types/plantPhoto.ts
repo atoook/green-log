@@ -26,6 +26,11 @@ export interface PlantPhotoCreateInput {
   comment?: string | null
 }
 
+export interface PlantPhotoUpdateInput {
+  takenDate?: string | null
+  comment?: string | null
+}
+
 export interface PlantPhotoUploadResult {
   objectKey: string
 }
