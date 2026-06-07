@@ -3,18 +3,22 @@ import { computed, ref } from 'vue'
 import type { ApiError } from '../../types/api'
 import type { PlantPhoto, PlantPhotoGallery } from '../../types/plantPhoto'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   gallery: PlantPhotoGallery | null
   isLoading: boolean
   isUploading: boolean
   isSettingCover: boolean
   isDeleting: boolean
+  isUpdatingMetadata?: boolean
   error: ApiError | null
   actionError: ApiError | null
-}>()
+}>(), {
+  isUpdatingMetadata: false,
+})
 
 const emit = defineEmits<{
   add: [input: { file: File; takenDate: string | null; comment: string | null }]
+  updateMetadata: [photoId: string, input: { takenDate: string | null; comment: string | null }]
   setCover: [photoId: string]
   delete: [photoId: string]
   retry: []
@@ -23,6 +27,9 @@ const emit = defineEmits<{
 const selectedFile = ref<File | null>(null)
 const takenDate = ref('')
 const comment = ref('')
+const editingPhotoId = ref<string | null>(null)
+const editingTakenDate = ref('')
+const editingComment = ref('')
 const failedImageIds = ref(new Set<string>())
 const expandedCommentIds = ref(new Set<string>())
 const collapsedCommentLength = 32
@@ -73,6 +80,30 @@ function confirmDelete(photo: PlantPhoto): void {
     return
   }
   emit('delete', photo.id)
+}
+
+function startEditing(photo: PlantPhoto): void {
+  editingPhotoId.value = photo.id
+  editingTakenDate.value = photo.takenDate ?? ''
+  editingComment.value = photo.comment ?? ''
+}
+
+function cancelEditing(): void {
+  editingPhotoId.value = null
+  editingTakenDate.value = ''
+  editingComment.value = ''
+}
+
+function submitMetadata(): void {
+  if (!editingPhotoId.value || props.isUpdatingMetadata) {
+    return
+  }
+
+  emit('updateMetadata', editingPhotoId.value, {
+    takenDate: editingTakenDate.value || null,
+    comment: editingComment.value.trim() || null,
+  })
+  cancelEditing()
 }
 
 function markImageFailed(photoId: string): void {
@@ -156,7 +187,52 @@ function toggleComment(photoId: string): void {
           </span>
         </div>
 
-        <div class="grid gap-1 text-sm text-stone-700">
+        <form
+          v-if="editingPhotoId === photo.id"
+          class="grid gap-3 rounded-md bg-stone-50 p-3"
+          @submit.prevent="submitMetadata"
+        >
+          <div class="grid gap-2 sm:grid-cols-2">
+            <label class="grid gap-1 text-sm font-semibold text-stone-800">
+              撮影日
+              <input
+                v-model="editingTakenDate"
+                class="rounded-md border border-stone-300 px-3 py-2 text-sm font-normal"
+                type="date"
+                :disabled="isUpdatingMetadata"
+              />
+            </label>
+            <label class="grid gap-1 text-sm font-semibold text-stone-800">
+              コメント
+              <input
+                v-model="editingComment"
+                class="rounded-md border border-stone-300 px-3 py-2 text-sm font-normal"
+                type="text"
+                maxlength="120"
+                :disabled="isUpdatingMetadata"
+              />
+            </label>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              class="rounded-md bg-leaf-700 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              type="submit"
+              :disabled="isUpdatingMetadata"
+            >
+              {{ isUpdatingMetadata ? '保存中' : '保存' }}
+            </button>
+            <button
+              class="rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              :disabled="isUpdatingMetadata"
+              @click="cancelEditing()"
+            >
+              キャンセル
+            </button>
+          </div>
+        </form>
+
+        <div v-else class="grid gap-1 text-sm text-stone-700">
           <p>{{ photo.takenDate || photo.createdAt.slice(0, 10) }}</p>
           <div v-if="photo.comment" class="grid gap-1">
             <div
@@ -191,6 +267,14 @@ function toggleComment(photoId: string): void {
         </div>
 
         <div class="flex flex-wrap gap-2">
+          <button
+            class="rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+            type="button"
+            :disabled="isUpdatingMetadata"
+            @click="startEditing(photo)"
+          >
+            編集
+          </button>
           <button
             class="rounded-md border border-leaf-200 px-3 py-2 text-sm font-semibold text-leaf-700 disabled:cursor-not-allowed disabled:opacity-50"
             type="button"

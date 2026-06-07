@@ -42,6 +42,7 @@ async function verifyGalleryRender(PlantImageGallery) {
     isUploading: false,
     isSettingCover: false,
     isDeleting: false,
+    isUpdatingMetadata: false,
     error: null,
     actionError: null,
   })
@@ -79,12 +80,14 @@ async function verifyGalleryRender(PlantImageGallery) {
     isUploading: false,
     isSettingCover: false,
     isDeleting: false,
+    isUpdatingMetadata: false,
     error: null,
     actionError: null,
   })
   assert.match(listed, /2枚/)
   assert.doesNotMatch(listed, /\/ 5枚/)
   assert.match(listed, /サムネイル/)
+  assert.match(listed, /編集/)
   assert.match(listed, /葉が増えた/)
   assert.match(listed, /新しい芽が出てきた。 葉の色も濃くなってきたので、来週も同じ角度/)
   assert.match(listed, /もっと見る/)
@@ -99,10 +102,16 @@ async function verifyGalleryDeleteFlow() {
   )
   assert.match(source, /window\.confirm\(message\)/)
   assert.match(source, /emit\('delete', photo\.id\)/)
+  assert.match(source, /emit\('updateMetadata', editingPhotoId\.value/)
+  assert.match(source, /startEditing\(photo\)/)
+  assert.match(source, /cancelEditing\(\)/)
+  assert.match(source, /撮影日/)
+  assert.match(source, /コメント/)
   assert.match(source, /サムネイルも未設定に戻ります/)
   assert.match(source, /閉じる/)
   assert.match(source, /class="ml-1 inline text-xs/)
   assert.doesNotMatch(source, /pendingDeletePhoto/)
+  assert.doesNotMatch(source, /editingFile|replacementFile|type="file"[\s\S]*editingPhotoId/)
 }
 
 async function verifyComposable(usePlantPhotos) {
