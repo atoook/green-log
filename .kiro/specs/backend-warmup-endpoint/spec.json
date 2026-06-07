@@ -1,16 +1,16 @@
 {
   "feature_name": "backend-warmup-endpoint",
   "created_at": "2026-06-07T06:39:19Z",
-  "updated_at": "2026-06-07T06:45:28Z",
+  "updated_at": "2026-06-07T07:05:50Z",
   "language": "ja",
-  "phase": "requirements-generated",
+  "phase": "design-generated",
   "approvals": {
     "requirements": {
       "generated": true,
-      "approved": false
+      "approved": true
     },
     "design": {
-      "generated": false,
+      "generated": true,
       "approved": false
     },
     "tasks": {
