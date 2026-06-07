@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     clerk_secret_key: SecretStr | None = Field(default=None, alias="CLERK_SECRET_KEY")
     clerk_authorized_parties: str = Field(default="", alias="CLERK_AUTHORIZED_PARTIES")
     clerk_webhook_secret: SecretStr | None = Field(default=None, alias="CLERK_WEBHOOK_SECRET")
+    warmup_key: SecretStr | None = Field(default=None, alias="WARMUP_KEY")
     legacy_owner_backfill_user_id: str | None = Field(
         default=None,
         alias="LEGACY_OWNER_BACKFILL_USER_ID",
@@ -49,6 +50,13 @@ class Settings(BaseSettings):
     @property
     def turso_auth_token_value(self) -> str | None:
         return self.turso_auth_token.get_secret_value() if self.turso_auth_token else None
+
+    @property
+    def warmup_key_value(self) -> str | None:
+        if not self.warmup_key:
+            return None
+        value = self.warmup_key.get_secret_value().strip()
+        return value or None
 
     @property
     def storage_access_key_id_value(self) -> str | None:

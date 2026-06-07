@@ -29,6 +29,15 @@ def test_settings_reads_auth_runtime_configuration_from_environment(monkeypatch)
     assert settings.legacy_owner_backfill_user_id == "user-backfill-id"
 
 
+def test_settings_reads_warmup_runtime_configuration_from_environment(monkeypatch):
+    monkeypatch.setenv("WARMUP_KEY", "dummy-warmup-key")
+
+    settings = Settings()
+
+    assert isinstance(settings.warmup_key, SecretStr)
+    assert settings.warmup_key_value == "dummy-warmup-key"
+
+
 def test_settings_reads_storage_runtime_configuration_for_s3(monkeypatch):
     monkeypatch.setenv("STORAGE_ACCESS_KEY_ID", "dummy-access-key")
     monkeypatch.setenv("STORAGE_SECRET_ACCESS_KEY", "dummy-secret-key")
@@ -86,6 +95,7 @@ def test_settings_repr_masks_secret_values():
         clerk_webhook_secret="dummy-webhook-key",
         storage_access_key_id="dummy-access-key",
         storage_secret_access_key="dummy-secret-key",
+        warmup_key="dummy-warmup-key",
     )
 
     rendered = repr(settings)
@@ -94,6 +104,7 @@ def test_settings_repr_masks_secret_values():
     assert "dummy-webhook-key" not in rendered
     assert "dummy-access-key" not in rendered
     assert "dummy-secret-key" not in rendered
+    assert "dummy-warmup-key" not in rendered
     assert "**********" in rendered
 
 
@@ -118,6 +129,12 @@ def test_env_example_documents_storage_runtime_configuration():
     assert "AWS_SECRET_ACCESS_KEY=" not in env_example
     assert "AWS_REGION=" not in env_example
     assert "S3_BUCKET_NAME=" not in env_example
+
+
+def test_env_example_documents_warmup_runtime_configuration():
+    env_example = (Path(__file__).resolve().parents[1] / ".env.example").read_text()
+
+    assert "WARMUP_KEY=" in env_example
 
 
 def test_cors_preflight_allows_authorization_header():
