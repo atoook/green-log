@@ -1,22 +1,22 @@
 {
   "feature_name": "plant-image-management",
   "created_at": "2026-06-06T06:06:08Z",
-  "updated_at": "2026-06-06T08:41:45Z",
+  "updated_at": "2026-06-07T11:29:47Z",
   "language": "ja",
-  "phase": "tasks-generated",
+  "phase": "requirements-generated",
   "approvals": {
     "requirements": {
       "generated": true,
-      "approved": true
+      "approved": false
     },
     "design": {
-      "generated": true,
-      "approved": true
+      "generated": false,
+      "approved": false
     },
     "tasks": {
-      "generated": true,
-      "approved": true
+      "generated": false,
+      "approved": false
     }
   },
-  "ready_for_implementation": true
+  "ready_for_implementation": false
 }
