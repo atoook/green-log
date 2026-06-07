@@ -67,6 +67,27 @@ class FakePlantPhotoService:
         self._raise_if_needed()
         return _gallery(cover_photo_id=photo_id)
 
+    def update_photo_metadata(
+        self,
+        owner_user_id: str,
+        plant_id: int,
+        photo_id: str,
+        payload,
+    ) -> PlantPhotoRead:
+        self.calls.append(
+            (
+                "update_photo_metadata",
+                {
+                    "owner_user_id": owner_user_id,
+                    "plant_id": plant_id,
+                    "photo_id": photo_id,
+                    "payload": payload,
+                },
+            )
+        )
+        self._raise_if_needed()
+        return _photo(photo_id=photo_id)
+
     def delete_photo(
         self,
         owner_user_id: str,
@@ -140,6 +161,10 @@ def test_photo_api_routes_are_protected_and_call_owner_scoped_service(
         "/plants/1/cover-photo",
         json={"photoId": "4bb385d0-eef0-4985-b50f-1e3da1fdf54f"},
     )
+    updated = client.patch(
+        "/plants/1/photos/4bb385d0-eef0-4985-b50f-1e3da1fdf54f",
+        json={"takenDate": "2026-06-02", "comment": "撮影日を直した"},
+    )
     deleted = client.delete(
         "/plants/1/photos/4bb385d0-eef0-4985-b50f-1e3da1fdf54f"
     )
@@ -156,6 +181,8 @@ def test_photo_api_routes_are_protected_and_call_owner_scoped_service(
     assert created.json()["imageUrl"] == "https://cdn.example.invalid/photo.webp"
     assert cover.status_code == 200
     assert cover.json()["coverPhotoId"] == "4bb385d0-eef0-4985-b50f-1e3da1fdf54f"
+    assert updated.status_code == 200
+    assert updated.json()["id"] == "4bb385d0-eef0-4985-b50f-1e3da1fdf54f"
     assert deleted.status_code == 200
     assert deleted.json()["id"] == "4bb385d0-eef0-4985-b50f-1e3da1fdf54f"
     assert ("upload_photo", ANY) in fake_service.calls
@@ -164,6 +191,14 @@ def test_photo_api_routes_are_protected_and_call_owner_scoped_service(
     assert fake_service.calls[0][1]["filename"] == "photo.webp"
     assert fake_service.calls[0][1]["content_type"] == "image/webp"
     assert fake_service.calls[0][1]["body"] == b"image-bytes"
+    update_call = [
+        call for call in fake_service.calls if call[0] == "update_photo_metadata"
+    ][0]
+    assert update_call[1]["owner_user_id"] == "owner-a"
+    assert update_call[1]["plant_id"] == 1
+    assert update_call[1]["photo_id"] == "4bb385d0-eef0-4985-b50f-1e3da1fdf54f"
+    assert update_call[1]["payload"].taken_date.isoformat() == "2026-06-02"
+    assert update_call[1]["payload"].comment == "撮影日を直した"
 
 
 @pytest.mark.parametrize(
@@ -263,6 +298,17 @@ def test_photo_api_integration_happy_path_uses_owner_scoped_domain_service(
     assert cover.status_code == 200
     assert cover.json()["coverPhotoId"] == photo_id
 
+    updated = client.patch(
+        f"/plants/{plant_id}/photos/{photo_id}",
+        json={"takenDate": "2026-06-02", "comment": "撮影日を直した"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["takenDate"] == "2026-06-02"
+    assert updated.json()["comment"] == "撮影日を直した"
+    assert updated.json()["imageUrl"] == f"https://cdn.example.invalid/{object_key}"
+    assert "storageKey" not in updated.json()
+    assert "ownerUserId" not in updated.json()
+
     deleted = client.delete(f"/plants/{plant_id}/photos/{photo_id}")
     assert deleted.status_code == 200
     assert storage.uploads == [object_key]
@@ -308,11 +354,22 @@ def test_photo_api_integration_hides_other_owner_photo_and_plant(
             f"/plants/{plant_id}/photos",
             json={"objectKey": f"plants/{plant_id}/other.webp"},
         ),
+        owner_b_client.patch(
+            f"/plants/{plant_id}/photos/{photo_id}",
+            json={"takenDate": "2026-06-02", "comment": "更新しない"},
+        ),
         owner_b_client.patch(f"/plants/{plant_id}/cover-photo", json={"photoId": photo_id}),
         owner_b_client.delete(f"/plants/{plant_id}/photos/{photo_id}"),
     ]
 
-    assert [response.status_code for response in responses] == [404, 404, 404, 404, 404]
+    assert [response.status_code for response in responses] == [
+        404,
+        404,
+        404,
+        404,
+        404,
+        404,
+    ]
 
 
 def test_photo_api_integration_rejects_object_key_for_different_plant(
@@ -348,6 +405,26 @@ def test_photo_api_integration_rejects_object_key_for_different_plant(
     assert "owner-a" not in response.text
     with Session(test_engine) as session:
         assert PlantPhotoRepository(session).count_for_plant("owner-a", plant_id) == 0
+
+
+def test_photo_api_rejects_metadata_update_with_non_metadata_fields(
+    protected_client,
+    app_dependency_override,
+):
+    client = protected_client("owner-a")
+    fake_service = FakePlantPhotoService()
+    app_dependency_override(get_plant_photo_service, lambda: fake_service)
+
+    response = client.patch(
+        "/plants/1/photos/4bb385d0-eef0-4985-b50f-1e3da1fdf54f",
+        json={
+            "takenDate": "2026-06-02",
+            "objectKey": "plants/1/replacement.webp",
+        },
+    )
+
+    assert response.status_code == 422
+    assert fake_service.calls == []
 
 
 def test_photo_api_integration_enforces_quota_and_unlimited_flag(
@@ -408,6 +485,7 @@ def test_photo_openapi_exposes_photo_routes_without_internal_gallery_fields():
     assert "/plants/{plant_id}/cover-photo" in openapi["paths"]
     assert "/plants/{plant_id}/photos/{photo_id}" in openapi["paths"]
     assert "patch" in openapi["paths"]["/plants/{plant_id}/cover-photo"]
+    assert "patch" in openapi["paths"]["/plants/{plant_id}/photos/{photo_id}"]
     assert "put" not in openapi["paths"]["/plants/{plant_id}/cover-photo"]
 
     component_text = str(openapi.get("components", {}))

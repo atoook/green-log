@@ -143,7 +143,7 @@
   - _Boundary: PlantPhotoService, PlantPhotoRepository_
   - _Depends: 5.1_
 
-- [ ] 5.3 Backend のメタ情報更新 API を公開する
+- [x] 5.3 Backend のメタ情報更新 API を公開する
   - 認証済みユーザーが植物配下の画像 ID に対して撮影日・コメントを更新できる。
   - validation error、missing plant/photo、他 owner 操作が既存の HTTP error 方針に沿って返る。
   - API 経由の更新後 response に変更後の撮影日・コメント・表示 URL が含まれ、storage/internal field は含まれない。
