@@ -102,6 +102,99 @@ def test_plant_photo_repository_delete_clears_cover_reference(test_engine):
         assert repository.get_for_plant("owner-a", owner_plant.id, created.id) is None
 
 
+def test_plant_photo_repository_updates_metadata_only_within_owner_plant(test_engine):
+    now = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    updated_at = datetime(2026, 6, 2, 10, 0, tzinfo=timezone.utc)
+    with Session(test_engine) as session:
+        owner_plant, other_owner_plant = _seed_plants(session, now)
+        repository = PlantPhotoRepository(session)
+        owner_photo = repository.create(
+            _photo(
+                owner_user_id="owner-a",
+                plant_id=owner_plant.id,
+                storage_key="plants/1/photo.webp",
+                taken_date=date(2026, 6, 1),
+                created_at=now,
+            )
+        )
+        other_photo = repository.create(
+            _photo(
+                owner_user_id="owner-b",
+                plant_id=other_owner_plant.id,
+                storage_key="plants/2/other.webp",
+                taken_date=date(2026, 6, 1),
+                created_at=now,
+            )
+        )
+
+        assert (
+            repository.update_metadata(
+                "owner-b",
+                owner_plant.id,
+                owner_photo.id,
+                taken_date=date(2026, 6, 2),
+                comment="別ユーザー更新",
+                updated_at=updated_at,
+            )
+            is None
+        )
+        updated = repository.update_metadata(
+            "owner-a",
+            owner_plant.id,
+            owner_photo.id,
+            taken_date=date(2026, 6, 3),
+            comment="撮影日を直した",
+            updated_at=updated_at,
+        )
+
+        assert updated is not None
+        assert updated.taken_date == date(2026, 6, 3)
+        assert updated.comment == "撮影日を直した"
+        assert updated.updated_at == updated_at.replace(tzinfo=None)
+        assert updated.storage_key == "plants/1/photo.webp"
+        assert updated.plant_id == owner_plant.id
+        assert repository.get_for_plant("owner-b", other_owner_plant.id, other_photo.id)
+
+
+def test_plant_photo_repository_metadata_update_changes_gallery_order(test_engine):
+    now = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    with Session(test_engine) as session:
+        owner_plant, _ = _seed_plants(session, now)
+        repository = PlantPhotoRepository(session)
+        first = repository.create(
+            _photo(
+                owner_user_id="owner-a",
+                plant_id=owner_plant.id,
+                storage_key="plants/1/first.webp",
+                taken_date=date(2026, 6, 1),
+                created_at=now,
+            )
+        )
+        second = repository.create(
+            _photo(
+                owner_user_id="owner-a",
+                plant_id=owner_plant.id,
+                storage_key="plants/1/second.webp",
+                taken_date=date(2026, 6, 2),
+                created_at=now,
+            )
+        )
+
+        repository.update_metadata(
+            "owner-a",
+            owner_plant.id,
+            second.id,
+            taken_date=date(2026, 5, 30),
+            comment=None,
+            updated_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
+        )
+
+        assert [photo.id for photo in repository.list_for_plant("owner-a", owner_plant.id)] == [
+            second.id,
+            first.id,
+        ]
+
+
 def _seed_plants(session: Session, now: datetime) -> tuple[Plant, Plant]:
     session.add(User(id="owner-a", clerk_user_id="clerk-owner-a", status="active"))
     session.add(User(id="owner-b", clerk_user_id="clerk-owner-b", status="active"))

@@ -134,7 +134,7 @@
   - _Requirements: 6.2, 6.3, 6.4, 6.6, 7.5, 8.1, 8.4, 9.6_
   - _Boundary: PlantPhoto schemas_
 
-- [ ] 5.2 Backend の owner-scoped メタ情報更新 domain flow を実装する
+- [x] 5.2 Backend の owner-scoped メタ情報更新 domain flow を実装する
   - owner、plant、photo の条件に一致する画像だけ、撮影日・コメント・更新日時を変更できる。
   - 他ユーザーまたは他植物の画像は更新されず、存在を漏らさない not found として扱える。
   - 更新時に storage upload/delete、object key 変更、plant id 変更、代表画像状態変更が発生しないことを service/repository test で確認できる。
