@@ -8,7 +8,7 @@ from app.models.user import User
 from app.repositories.plant_repository import PlantRepository
 
 
-def test_repository_derives_cover_image_url_only_for_owned_plant_photo(test_engine):
+def test_repository_derives_cover_storage_key_only_for_owned_plant_photo(test_engine):
     now = datetime(2026, 6, 1, tzinfo=timezone.utc)
     with Session(test_engine) as session:
         session.add(User(id="owner-a", clerk_user_id="clerk-owner-a", status="active"))
@@ -40,30 +40,30 @@ def test_repository_derives_cover_image_url_only_for_owned_plant_photo(test_engi
         cover_photo = PlantPhoto(
             owner_user_id="owner-a",
             plant_id=owner_plant.id,
-            image_url="https://example.com/cover.jpg",
+            storage_key="plants/1/cover.jpg",
             created_at=now,
             updated_at=now,
         )
-        same_plant_photo_without_url = PlantPhoto(
+        same_plant_photo = PlantPhoto(
             owner_user_id="owner-a",
             plant_id=owner_plant.id,
-            image_url=None,
+            storage_key="plants/1/other.jpg",
             created_at=now,
             updated_at=now,
         )
         other_owner_photo = PlantPhoto(
             owner_user_id="owner-b",
             plant_id=other_owner_plant.id,
-            image_url="https://example.com/other-owner.jpg",
+            storage_key="plants/2/other-owner.jpg",
             created_at=now,
             updated_at=now,
         )
         session.add(cover_photo)
-        session.add(same_plant_photo_without_url)
+        session.add(same_plant_photo)
         session.add(other_owner_photo)
         session.commit()
         session.refresh(cover_photo)
-        session.refresh(same_plant_photo_without_url)
+        session.refresh(same_plant_photo)
         session.refresh(other_owner_photo)
 
         owner_plant.cover_photo_id = cover_photo.id
@@ -76,11 +76,11 @@ def test_repository_derives_cover_image_url_only_for_owned_plant_photo(test_engi
             owner_plant.id,
         )
 
-        assert [(row.plant.id, row.cover_image_url) for row in rows] == [
-            (owner_plant.id, "https://example.com/cover.jpg")
+        assert [(row.plant.id, row.cover_storage_key) for row in rows] == [
+            (owner_plant.id, "plants/1/cover.jpg")
         ]
         assert detail is not None
-        assert detail.cover_image_url == "https://example.com/cover.jpg"
+        assert detail.cover_storage_key == "plants/1/cover.jpg"
 
         owner_plant.cover_photo_id = other_owner_photo.id
         session.add(owner_plant)
@@ -91,15 +91,15 @@ def test_repository_derives_cover_image_url_only_for_owned_plant_photo(test_engi
             owner_plant.id,
         )
         assert mismatched_owner_detail is not None
-        assert mismatched_owner_detail.cover_image_url is None
+        assert mismatched_owner_detail.cover_storage_key is None
 
-        owner_plant.cover_photo_id = same_plant_photo_without_url.id
+        owner_plant.cover_photo_id = same_plant_photo.id
         session.add(owner_plant)
         session.commit()
 
-        no_url_detail = PlantRepository(session).get_by_id_with_cover_image(
+        same_owner_detail = PlantRepository(session).get_by_id_with_cover_image(
             "owner-a",
             owner_plant.id,
         )
-        assert no_url_detail is not None
-        assert no_url_detail.cover_image_url is None
+        assert same_owner_detail is not None
+        assert same_owner_detail.cover_storage_key == "plants/1/other.jpg"

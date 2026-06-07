@@ -13,7 +13,7 @@ from app.core.config import Settings
 
 def type_family(column_type: object) -> str:
     type_name = str(column_type).upper()
-    for family in ("DATETIME", "DATE", "INTEGER", "TEXT"):
+    for family in ("BOOLEAN", "DATETIME", "DATE", "INTEGER", "TEXT"):
         if family in type_name:
             return family
     return type_name
@@ -98,11 +98,12 @@ def test_plant_photo_migration_creates_photo_table_and_cover_reference(
 
     assert "plant_photos" in inspector.get_table_names()
 
+    plant_photo_columns = column_schema(inspector, "plant_photos")
     assert_named_schema(
-        column_schema(inspector, "plant_photos"),
+        plant_photo_columns,
         {
             "id": {
-                "type": "INTEGER",
+                "type": "TEXT",
                 "nullable": False,
                 "primary_key": True,
             },
@@ -116,14 +117,9 @@ def test_plant_photo_migration_creates_photo_table_and_cover_reference(
                 "nullable": False,
                 "primary_key": False,
             },
-            "image_url": {
-                "type": "TEXT",
-                "nullable": True,
-                "primary_key": False,
-            },
             "storage_key": {
                 "type": "TEXT",
-                "nullable": True,
+                "nullable": False,
                 "primary_key": False,
             },
             "taken_date": {
@@ -148,6 +144,7 @@ def test_plant_photo_migration_creates_photo_table_and_cover_reference(
             },
         },
     )
+    assert "image_url" not in plant_photo_columns
 
     assert foreign_key_schema(inspector, "plant_photos") == {
         ("owner_user_id",): {
@@ -178,7 +175,7 @@ def test_plant_photo_migration_creates_photo_table_and_cover_reference(
         plant_columns,
         {
             "cover_photo_id": {
-                "type": "INTEGER",
+                "type": "TEXT",
                 "nullable": True,
                 "primary_key": False,
             },
@@ -195,6 +192,17 @@ def test_plant_photo_migration_creates_photo_table_and_cover_reference(
         },
     )
     assert ("cover_photo_id",) not in foreign_key_schema(inspector, "plants")
+
+    assert_named_schema(
+        column_schema(inspector, "users"),
+        {
+            "photo_upload_unlimited": {
+                "type": "BOOLEAN",
+                "nullable": False,
+                "primary_key": False,
+            },
+        },
+    )
 
 
 def test_plant_photo_migration_downgrade_removes_photo_schema(
@@ -226,9 +234,15 @@ def test_plant_photo_migration_downgrade_removes_photo_schema(
             for index_name, schema in index_schema(inspector, "plants").items()
             if index_name == "ix_plants_cover_photo_id"
         },
+        "user_columns": {
+            column_name: schema
+            for column_name, schema in column_schema(inspector, "users").items()
+            if column_name == "photo_upload_unlimited"
+        },
     }
     assert photo_leftovers == {
         "tables": [],
         "plant_columns": {},
         "plant_indexes": {},
+        "user_columns": {},
     }

@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from app.auth.dependencies import get_current_user
 from app.auth.types import CurrentUser
+from app.core.config import Settings, get_settings
 from app.db.session import get_session
 from app.repositories.plant_repository import PlantRepository
 from app.repositories.watering_repository import WateringRepository
@@ -14,16 +15,19 @@ from app.services.watering_service import (
     WateringPlantNotFoundError,
     WateringService,
 )
+from app.storage.object_storage import StorageUrlResolver
 
 router = APIRouter(prefix="/plants", tags=["watering"])
 
 
 def get_watering_service(
     session: Annotated[Session, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> WateringService:
     return WateringService(
         PlantRepository(session),
         WateringRepository(session),
+        image_url_resolver=StorageUrlResolver(settings),
     )
 
 

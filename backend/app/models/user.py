@@ -26,5 +26,9 @@ class User(SQLModel, table=True):
     primary_email: str | None = Field(default=None, sa_column=sa.Column(sa.Text(), nullable=True))
     display_name: str | None = Field(default=None, sa_column=sa.Column(sa.Text(), nullable=True))
     avatar_url: str | None = Field(default=None, sa_column=sa.Column(sa.Text(), nullable=True))
+    photo_upload_unlimited: bool = Field(
+        default=False,
+        sa_column=sa.Column(sa.Boolean(), nullable=False, server_default=sa.false()),
+    )
     created_at: datetime = Field(default_factory=utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=utc_now, nullable=False)

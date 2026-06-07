@@ -8,6 +8,9 @@ class UserRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
+    def get_by_id(self, user_id: str) -> User | None:
+        return self.session.get(User, user_id)
+
     def get_by_clerk_user_id(self, clerk_user_id: str) -> User | None:
         statement = select(User).where(User.clerk_user_id == clerk_user_id)
         return self.session.exec(statement).first()

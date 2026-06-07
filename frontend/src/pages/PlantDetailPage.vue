@@ -3,10 +3,12 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PlantDetail from '../components/plants/PlantDetail.vue'
 import PlantEditForm from '../components/plants/PlantEditForm.vue'
+import PlantImageGallery from '../components/plants/PlantImageGallery.vue'
 import WateringActionButton from '../components/watering/WateringActionButton.vue'
 import WateringHistoryList from '../components/watering/WateringHistoryList.vue'
 import WateringStatusPanel from '../components/watering/WateringStatusPanel.vue'
 import { usePlantDetail } from '../composables/usePlantDetail'
+import { usePlantPhotos } from '../composables/usePlantPhotos'
 import { usePlantWatering } from '../composables/usePlantWatering'
 import type { PlantUpdateInput } from '../types/plant'
 
@@ -20,8 +22,25 @@ const {
   error,
   updateError,
   successMessage: updateSuccessMessage,
+  loadPlant,
   updatePlant,
 } = usePlantDetail(plantId)
+const numericPlantId = computed(() => (plant.value ? plant.value.id : null))
+const {
+  gallery,
+  isLoading: isGalleryLoading,
+  isUploading,
+  isSettingCover,
+  isDeleting,
+  error: galleryError,
+  actionError: galleryActionError,
+  loadPhotos,
+  addPhoto,
+  setCoverPhoto,
+  deletePhoto,
+} = usePlantPhotos(numericPlantId, {
+  onCoverImageChange: loadPlant,
+})
 const {
   watering,
   history,
@@ -91,6 +110,21 @@ async function savePlant(input: PlantUpdateInput): Promise<void> {
       :error="error"
       @back="backToList"
       @edit="startEditing"
+    />
+
+    <PlantImageGallery
+      v-if="plant"
+      :gallery="gallery"
+      :is-loading="isGalleryLoading"
+      :is-uploading="isUploading"
+      :is-setting-cover="isSettingCover"
+      :is-deleting="isDeleting"
+      :error="galleryError"
+      :action-error="galleryActionError"
+      @add="addPhoto"
+      @set-cover="setCoverPhoto"
+      @delete="deletePhoto"
+      @retry="loadPhotos"
     />
 
     <section

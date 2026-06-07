@@ -31,8 +31,13 @@ from app.services.watering_service import (
 @dataclass(frozen=True)
 class SmokeVerificationResult:
     created_plant_id: int
-    created_plant_photo_id: int
+    created_plant_photo_id: str
     created_watering_record_id: int
+
+
+class SmokeImageUrlResolver:
+    def public_url(self, object_key: str) -> str:
+        return f"https://example.invalid/{object_key}"
 
 
 def run_migrations(settings: Settings) -> None:
@@ -84,7 +89,8 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
             )
         )
 
-        service = PlantService(PlantRepository(session))
+        image_url_resolver = SmokeImageUrlResolver()
+        service = PlantService(PlantRepository(session), image_url_resolver)
         created = service.create_plant(
             smoke_user.id,
             PlantCreate(
@@ -112,17 +118,17 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
         cover_photo = PlantPhoto(
             owner_user_id=smoke_user.id,
             plant_id=created.id,
-            image_url=f"https://example.invalid/{created.id}/cover.jpg",
+            storage_key=f"plants/{created.id}/cover.jpg",
         )
         secondary_photo = PlantPhoto(
             owner_user_id=smoke_user.id,
             plant_id=created.id,
-            image_url=f"https://example.invalid/{created.id}/secondary.jpg",
+            storage_key=f"plants/{created.id}/secondary.jpg",
         )
         other_owner_photo = PlantPhoto(
             owner_user_id=other_user.id,
             plant_id=other_created.id,
-            image_url=f"https://example.invalid/{other_created.id}/cover.jpg",
+            storage_key=f"plants/{other_created.id}/cover.jpg",
         )
         session.add(cover_photo)
         session.add(secondary_photo)
@@ -141,9 +147,10 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
 
         plants = service.list_plants(smoke_user.id)
         detail = service.get_plant(smoke_user.id, created.id)
-        if detail.image_url != cover_photo.image_url:
+        cover_image_url = image_url_resolver.public_url(cover_photo.storage_key)
+        if detail.image_url != cover_image_url:
             raise RuntimeError("Detail read did not expose the smoke cover photo URL")
-        if not any(plant.id == created.id and plant.image_url == cover_photo.image_url for plant in plants):
+        if not any(plant.id == created.id and plant.image_url == cover_image_url for plant in plants):
             raise RuntimeError("List read did not expose the smoke cover photo URL")
 
         smoke_plant.cover_photo_id = other_owner_photo.id
@@ -160,6 +167,7 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
         watering_service = WateringService(
             PlantRepository(session),
             WateringRepository(session),
+            image_url_resolver=image_url_resolver,
         )
 
         initial_watering = watering_service.get_plant_watering(smoke_user.id, created.id)
@@ -174,7 +182,7 @@ def verify_plant_crud(settings: Settings) -> SmokeVerificationResult:
         if not any(
             item.plant_id == created.id
             and item.due_status == "unrecorded"
-            and item.plant.image_url == cover_photo.image_url
+            and item.plant.image_url == cover_image_url
             for section in initial_upcoming_care.sections
             for item in section.items
         ):

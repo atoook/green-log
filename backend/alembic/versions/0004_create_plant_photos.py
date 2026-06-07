@@ -17,7 +17,16 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column("plants", sa.Column("cover_photo_id", sa.Integer(), nullable=True))
+    op.add_column(
+        "users",
+        sa.Column(
+            "photo_upload_unlimited",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.false(),
+        ),
+    )
+    op.add_column("plants", sa.Column("cover_photo_id", sa.Text(), nullable=True))
     op.drop_column("plants", "image_url")
     op.create_index(
         "ix_plants_cover_photo_id",
@@ -28,11 +37,10 @@ def upgrade() -> None:
 
     op.create_table(
         "plant_photos",
-        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Text(), nullable=False),
         sa.Column("owner_user_id", sa.Text(), nullable=False),
         sa.Column("plant_id", sa.Integer(), nullable=False),
-        sa.Column("image_url", sa.Text(), nullable=True),
-        sa.Column("storage_key", sa.Text(), nullable=True),
+        sa.Column("storage_key", sa.Text(), nullable=False),
         sa.Column("taken_date", sa.Date(), nullable=True),
         sa.Column("comment", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
@@ -78,3 +86,7 @@ def downgrade() -> None:
 
     op.add_column("plants", sa.Column("image_url", sa.Text(), nullable=True))
     op.drop_column("plants", "cover_photo_id")
+    bind = op.get_bind()
+    user_column_names = {column["name"] for column in sa.inspect(bind).get_columns("users")}
+    if "photo_upload_unlimited" in user_column_names:
+        op.drop_column("users", "photo_upload_unlimited")
