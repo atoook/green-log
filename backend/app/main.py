@@ -8,6 +8,7 @@ from app.routers.care import router as care_router
 from app.routers.photos import router as photos_router
 from app.routers.plant_photos import router as plant_photos_router
 from app.routers.plants import router as plants_router
+from app.routers.warmup import router as warmup_router
 from app.routers.watering import router as watering_router
 from app.routers.webhooks import router as webhooks_router
 
@@ -29,6 +30,7 @@ app.include_router(plant_photos_router)
 app.include_router(care_router)
 app.include_router(watering_router)
 app.include_router(webhooks_router)
+app.include_router(warmup_router)
 
 
 @app.exception_handler(RequestValidationError)
