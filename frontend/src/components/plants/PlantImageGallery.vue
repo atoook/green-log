@@ -37,6 +37,7 @@ const collapsedCommentLength = 32
 
 const photos = computed(() => props.gallery?.photos ?? [])
 const quota = computed(() => props.gallery?.quota ?? null)
+const isEditingPhoto = computed(() => editingPhotoId.value !== null)
 const isAtLimit = computed(() => {
   if (!quota.value || quota.value.unlimited || quota.value.maxCount === null) {
     return false
@@ -167,7 +168,7 @@ function toggleComment(photoId: string): void {
         画像はまだありません
       </div>
 
-      <ol v-else class="grid gap-3 sm:grid-cols-2">
+      <ol v-else class="grid items-start gap-3 sm:grid-cols-2">
         <li
           v-for="photo in photos"
           :key="photo.id"
@@ -272,7 +273,7 @@ function toggleComment(photoId: string): void {
               </div>
             </div>
 
-            <div class="flex flex-wrap gap-2">
+            <div v-if="!isEditingPhoto" class="flex flex-wrap gap-2">
               <button
                 class="rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
                 type="button"
