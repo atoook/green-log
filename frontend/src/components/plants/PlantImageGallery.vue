@@ -213,16 +213,16 @@ function toggleComment(photoId: string): void {
               />
             </label>
           </div>
-          <div class="flex flex-wrap gap-2">
+          <div class="grid w-full gap-2 pt-1">
             <button
-              class="rounded-md bg-leaf-700 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              class="w-full rounded-md bg-leaf-700 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               type="submit"
               :disabled="isUpdatingMetadata"
             >
               {{ isUpdatingMetadata ? '保存中' : '保存' }}
             </button>
             <button
-              class="rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+              class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
               type="button"
               :disabled="isUpdatingMetadata"
               @click="cancelEditing()"
@@ -232,66 +232,68 @@ function toggleComment(photoId: string): void {
           </div>
         </form>
 
-        <div v-else class="grid gap-1 text-sm text-stone-700">
-          <p>{{ photo.takenDate || photo.createdAt.slice(0, 10) }}</p>
-          <div v-if="photo.comment" class="grid gap-1">
-            <div
-              v-if="shouldCollapseComment(photo.comment) && !isCommentExpanded(photo.id)"
-              class="text-sm text-stone-700"
-            >
-              <p class="break-words">
-                <span>{{ collapsedCommentPreview(photo.comment) }}</span>
+        <template v-else>
+          <div class="grid gap-1 text-sm text-stone-700">
+            <p>{{ photo.takenDate || photo.createdAt.slice(0, 10) }}</p>
+            <div v-if="photo.comment" class="grid gap-1">
+              <div
+                v-if="shouldCollapseComment(photo.comment) && !isCommentExpanded(photo.id)"
+                class="text-sm text-stone-700"
+              >
+                <p class="break-words">
+                  <span>{{ collapsedCommentPreview(photo.comment) }}</span>
+                  <button
+                    class="ml-1 inline text-xs font-semibold text-stone-500 underline underline-offset-2 hover:text-stone-700"
+                    type="button"
+                    aria-expanded="false"
+                    @click="toggleComment(photo.id)"
+                  >
+                    もっと見る
+                  </button>
+                </p>
+              </div>
+              <p v-else class="line-clamp-none whitespace-pre-wrap break-words">
+                <span>{{ photo.comment }}</span>
                 <button
+                  v-if="shouldCollapseComment(photo.comment)"
                   class="ml-1 inline text-xs font-semibold text-stone-500 underline underline-offset-2 hover:text-stone-700"
                   type="button"
-                  aria-expanded="false"
+                  aria-expanded="true"
                   @click="toggleComment(photo.id)"
                 >
-                  もっと見る
+                  閉じる
                 </button>
               </p>
             </div>
-            <p v-else class="line-clamp-none whitespace-pre-wrap break-words">
-              <span>{{ photo.comment }}</span>
-              <button
-                v-if="shouldCollapseComment(photo.comment)"
-                class="ml-1 inline text-xs font-semibold text-stone-500 underline underline-offset-2 hover:text-stone-700"
-                type="button"
-                aria-expanded="true"
-                @click="toggleComment(photo.id)"
-              >
-                閉じる
-              </button>
-            </p>
           </div>
-        </div>
 
-        <div class="flex flex-wrap gap-2">
-          <button
-            class="rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
-            :disabled="isUpdatingMetadata"
-            @click="startEditing(photo)"
-          >
-            編集
-          </button>
-          <button
-            class="rounded-md border border-leaf-200 px-3 py-2 text-sm font-semibold text-leaf-700 disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
-            :disabled="photo.isCover || isSettingCover"
-            @click="emit('setCover', photo.id)"
-          >
-            サムネイルにする
-          </button>
-          <button
-            class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
-            :disabled="isDeleting"
-            @click="confirmDelete(photo)"
-          >
-            削除
-          </button>
-        </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              class="rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              :disabled="isUpdatingMetadata"
+              @click="startEditing(photo)"
+            >
+              編集
+            </button>
+            <button
+              class="rounded-md border border-leaf-200 px-3 py-2 text-sm font-semibold text-leaf-700 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              :disabled="photo.isCover || isSettingCover"
+              @click="emit('setCover', photo.id)"
+            >
+              サムネイルにする
+            </button>
+            <button
+              class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              :disabled="isDeleting"
+              @click="confirmDelete(photo)"
+            >
+              削除
+            </button>
+          </div>
+        </template>
       </li>
     </ol>
 
