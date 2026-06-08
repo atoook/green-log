@@ -4,7 +4,11 @@ import {
   type PlantPhotosApiClient,
 } from '../api/plantPhotos'
 import type { ApiError } from '../types/api'
-import type { PlantPhoto, PlantPhotoGallery } from '../types/plantPhoto'
+import type {
+  PlantPhoto,
+  PlantPhotoGallery,
+  PlantPhotoUpdateInput,
+} from '../types/plantPhoto'
 import { useAuthenticatedApi } from './useAuthenticatedApi'
 
 interface UsePlantPhotosOptions {
@@ -34,6 +38,7 @@ export function usePlantPhotos(
   const isUploading = ref(false)
   const isSettingCover = ref(false)
   const isDeleting = ref(false)
+  const isUpdatingMetadata = ref(false)
   const error = ref<ApiError | null>(null)
   const actionError = ref<ApiError | null>(null)
 
@@ -102,6 +107,35 @@ export function usePlantPhotos(
     }
   }
 
+  async function updatePhotoMetadata(
+    photoId: string,
+    input: PlantPhotoUpdateInput,
+  ): Promise<PlantPhoto | null> {
+    if (plantId.value === null || isUpdatingMetadata.value) {
+      return null
+    }
+
+    isUpdatingMetadata.value = true
+    actionError.value = null
+    try {
+      const updated = await plantPhotosApiClient.updatePlantPhotoMetadata(
+        plantId.value,
+        photoId,
+        {
+          takenDate: input.takenDate ?? null,
+          comment: input.comment ?? null,
+        },
+      )
+      await loadPhotos()
+      return updated
+    } catch (caught) {
+      actionError.value = caught as ApiError
+      return null
+    } finally {
+      isUpdatingMetadata.value = false
+    }
+  }
+
   async function deletePhoto(photoId: string): Promise<void> {
     if (plantId.value === null || isDeleting.value) {
       return
@@ -139,10 +173,12 @@ export function usePlantPhotos(
     isUploading,
     isSettingCover,
     isDeleting,
+    isUpdatingMetadata,
     error,
     actionError,
     loadPhotos,
     addPhoto,
+    updatePhotoMetadata,
     setCoverPhoto,
     deletePhoto,
   }

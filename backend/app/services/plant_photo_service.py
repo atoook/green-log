@@ -18,6 +18,7 @@ from app.schemas.plant_photo import (
     PlantPhotoGalleryRead,
     PlantPhotoQuotaRead,
     PlantPhotoRead,
+    PlantPhotoUpdate,
 )
 
 
@@ -144,6 +145,30 @@ class PlantPhotoService:
         if plant is None:
             raise PlantPhotoNotFoundError("Photo not found")
         return self.get_gallery(owner_user_id, plant_id)
+
+    def update_photo_metadata(
+        self,
+        owner_user_id: str,
+        plant_id: int,
+        photo_id: str,
+        payload: PlantPhotoUpdate,
+    ) -> PlantPhotoRead:
+        plant = self.photo_repository.get_owner_plant(owner_user_id, plant_id)
+        if plant is None:
+            raise PlantPhotoNotFoundError("Photo not found")
+
+        photo = self.photo_repository.update_metadata(
+            owner_user_id,
+            plant_id,
+            photo_id,
+            taken_date=payload.taken_date,
+            comment=payload.comment,
+            updated_at=utc_now(),
+        )
+        if photo is None:
+            raise PlantPhotoNotFoundError("Photo not found")
+
+        return self._photo_to_read(photo, cover_photo_id=plant.cover_photo_id)
 
     def delete_photo(
         self,

@@ -10,6 +10,7 @@ from app.schemas.plant_photo import (
     PlantPhotoCreate,
     PlantPhotoGalleryRead,
     PlantPhotoRead,
+    PlantPhotoUpdate,
 )
 from app.services.plant_photo_service import (
     PlantPhotoNotFoundError,
@@ -98,3 +99,27 @@ def delete_plant_photo(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Image storage is unavailable",
         ) from exc
+
+
+@router.patch("/{plant_id}/photos/{photo_id}", response_model=PlantPhotoRead)
+def update_plant_photo_metadata(
+    plant_id: int,
+    photo_id: str,
+    payload: PlantPhotoUpdate,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    service: Annotated[PlantPhotoService, Depends(get_plant_photo_service)],
+) -> PlantPhotoRead:
+    try:
+        return service.update_photo_metadata(
+            current_user.id,
+            plant_id,
+            photo_id,
+            payload,
+        )
+    except PlantPhotoValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except PlantPhotoNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

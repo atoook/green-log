@@ -8,7 +8,7 @@ from app.models.plant_photo import PlantPhoto
 from app.models.user import User
 from app.repositories.plant_photo_repository import PlantPhotoRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.plant_photo import PlantPhotoCreate
+from app.schemas.plant_photo import PlantPhotoCreate, PlantPhotoUpdate
 from app.services.plant_photo_service import (
     PlantPhotoNotFoundError,
     PlantPhotoQuotaExceededError,
@@ -216,6 +216,71 @@ def test_delete_photo_keeps_record_when_storage_delete_fails(test_engine):
 
         assert plant.cover_photo_id == photo.id
         assert repository.get_for_plant("owner-a", plant.id, photo.id) is not None
+
+
+def test_update_photo_metadata_updates_only_metadata_and_keeps_cover_state(test_engine):
+    now = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    with Session(test_engine) as session:
+        plant = _seed_user_and_plant(session)
+        repository = PlantPhotoRepository(session)
+        photo = repository.create(
+            _photo(
+                "owner-a",
+                plant.id,
+                f"plants/{plant.id}/photo.webp",
+                now,
+                taken_date=date(2026, 6, 1),
+            )
+        )
+        assert repository.set_cover_photo("owner-a", plant.id, photo.id)
+        storage = FakeStorage()
+
+        updated = _service(session, storage=storage).update_photo_metadata(
+            "owner-a",
+            plant.id,
+            photo.id,
+            PlantPhotoUpdate(taken_date=date(2026, 6, 2), comment="撮影日を直した"),
+        )
+        stored = repository.get_for_plant("owner-a", plant.id, photo.id)
+        session.refresh(plant)
+
+        assert updated.id == photo.id
+        assert updated.taken_date == date(2026, 6, 2)
+        assert updated.comment == "撮影日を直した"
+        assert updated.image_url == f"https://cdn.example.invalid/plants/{plant.id}/photo.webp"
+        assert updated.is_cover is True
+        assert stored is not None
+        assert stored.storage_key == f"plants/{plant.id}/photo.webp"
+        assert stored.plant_id == plant.id
+        assert plant.cover_photo_id == photo.id
+        assert storage.deletes == []
+
+
+def test_update_photo_metadata_rejects_photo_outside_owner_plant(test_engine):
+    now = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    with Session(test_engine) as session:
+        plant = _seed_user_and_plant(session)
+        other = _seed_user_and_plant(session, owner_user_id="owner-b", plant_name="B")
+        other_photo = PlantPhotoRepository(session).create(
+            _photo("owner-b", other.id, f"plants/{other.id}/other.webp", now)
+        )
+
+        with pytest.raises(PlantPhotoNotFoundError):
+            _service(session).update_photo_metadata(
+                "owner-a",
+                plant.id,
+                other_photo.id,
+                PlantPhotoUpdate(taken_date=date(2026, 6, 2), comment="更新しない"),
+            )
+
+        stored = PlantPhotoRepository(session).get_for_plant(
+            "owner-b",
+            other.id,
+            other_photo.id,
+        )
+        assert stored is not None
+        assert stored.taken_date is None
+        assert stored.comment is None
 
 
 def _seed_user_and_plant(

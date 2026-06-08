@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 import sqlalchemy as sa
 from sqlmodel import Session, select
 
@@ -51,6 +53,28 @@ class PlantPhotoRepository:
         return self.session.exec(statement).first()
 
     def create(self, photo: PlantPhoto) -> PlantPhoto:
+        self.session.add(photo)
+        self.session.commit()
+        self.session.refresh(photo)
+        return photo
+
+    def update_metadata(
+        self,
+        owner_user_id: str,
+        plant_id: int,
+        photo_id: str,
+        *,
+        taken_date: date | None,
+        comment: str | None,
+        updated_at: datetime,
+    ) -> PlantPhoto | None:
+        photo = self.get_for_plant(owner_user_id, plant_id, photo_id)
+        if photo is None:
+            return None
+
+        photo.taken_date = taken_date
+        photo.comment = comment
+        photo.updated_at = updated_at
         self.session.add(photo)
         self.session.commit()
         self.session.refresh(photo)

@@ -305,3 +305,67 @@ POST /plants/{plant_id}/photos
 - [FastAPI Request Files](https://fastapi.tiangolo.com/tutorial/request-files/) — `UploadFile` と `python-multipart` 前提。
 - [Boto3 S3 upload_fileobj](https://docs.aws.amazon.com/boto3/latest/reference/services/s3/bucket/upload_fileobj.html) — file-like object upload。
 - [Amazon S3 Object Ownership](https://docs.aws.amazon.com/AmazonS3/latest/userguide/about-object-ownership.html) — Bucket owner enforced と ACL disabled 方針。
+
+---
+
+# Design Update: 画像メタ情報編集
+
+作成日: 2026-06-07
+
+## Summary
+- **Feature**: `plant-image-management`
+- **Discovery Scope**: Extension / Light Discovery
+- **Key Findings**:
+  - 既存実装は `PlantPhoto.taken_date`, `comment`, `updated_at` をすでに持つため、画像メタ情報編集に DB migration は不要。
+  - 既存の `PlantPhotoService` / `PlantPhotoRepository` / `plant_photos.py` / `usePlantPhotos` / `PlantImageGallery.vue` 境界に metadata update を追加するのが最小変更。
+  - 画像ファイル差し替えと植物再紐づけは request body と UI に含めず、owner/plant/photo scoped update で拒否可能にする。
+
+## Research Log
+
+### 既存実装の拡張点
+- **Context**: requirements に画像ごとの編集モードと撮影日などの更新が追加された。
+- **Sources Consulted**: `backend/app/models/plant_photo.py`, `backend/app/schemas/plant_photo.py`, `backend/app/services/plant_photo_service.py`, `backend/app/repositories/plant_photo_repository.py`, `frontend/src/components/plants/PlantImageGallery.vue`, `frontend/src/composables/usePlantPhotos.ts`, `frontend/src/api/plantPhotos.ts`
+- **Findings**:
+  - Backend の `PlantPhoto` は撮影日、コメント、更新日時を保持済み。
+  - API schema は create/read はあるが update schema がない。
+  - Service/Repository は create/list/cover/delete を持つが metadata update method がない。
+  - Frontend は撮影日・コメントを登録時に入力し、ギャラリーで表示しているが、編集状態を持たない。
+- **Implications**:
+  - 新規外部依存や storage 変更は不要。
+  - `PATCH /plants/{plant_id}/photos/{photo_id}` を追加し、撮影日・コメントだけを更新する。
+  - 成功後は gallery reload により時系列順を再同期する。
+
+## Architecture Pattern Evaluation
+
+| Option | Description | Strengths | Risks / Limitations | Notes |
+|--------|-------------|-----------|---------------------|-------|
+| 既存写真境界に update を追加 | `PlantPhotoService/Repository` に metadata update を追加 | 最小変更、owner scope と error mapping を再利用できる | 既存境界がさらに広がる | 採用 |
+| 植物編集境界へ寄せる | `PlantEditForm` と同じ植物編集 workflow に画像 metadata を含める | 編集 UI の見た目は揃えやすい | 植物基本情報と画像 lifecycle が混ざる | 不採用 |
+| 画像ファイル編集まで含める | metadata update と file replacement を同時に扱う | 画像編集体験としては広い | requirements の out of scope に反する | 不採用 |
+
+## Design Decisions
+
+### Decision: Metadata update is DB-only
+- **Context**: ユーザーは撮影日などのメタ情報更新を求めており、画像差し替えは対象外としている。
+- **Alternatives Considered**:
+  1. DB-only update — 撮影日・コメントだけを更新する。
+  2. File replacement update — metadata と画像ファイル差し替えを同じ flow に含める。
+- **Selected Approach**: DB-only update を採用する。
+- **Rationale**: 既存 `plant_photos` に必要な列があり、storage や quota に影響させず requirements を満たせる。
+- **Trade-offs**: 更新後の時系列再同期のため gallery reload が必要になるが、1植物5枚前提なので負荷は小さい。
+- **Follow-up**: backend/frontend tests で storage client が呼ばれないこと、plant id/object key/cover state が変わらないことを固定する。
+
+### Decision: Edit mode lives on each gallery item
+- **Context**: 植物情報編集と同様に閲覧状態と編集状態を分ける必要があるが、編集対象は植物全体ではなく画像単位である。
+- **Alternatives Considered**:
+  1. 画像カード内 edit mode — 各画像ごとに編集ボタンと form を表示する。
+  2. 植物詳細全体の edit mode に統合する。
+- **Selected Approach**: 画像カード内 edit mode を採用する。
+- **Rationale**: 操作対象が明確で、植物基本情報編集や水やり状態と混ざらない。
+- **Trade-offs**: `PlantImageGallery.vue` の local draft state が増える。
+- **Follow-up**: UI tests で cancel が既存表示を維持すること、保存時に撮影日・コメントだけを emit することを検証する。
+
+## Risks & Mitigations
+- 撮影日変更後に表示順が古いまま残る — update 成功後に `loadPhotos()` を呼び、repository の既存 sort rule で再表示する。
+- update request に余分な field が混入する — `PlantPhotoUpdate` schema と frontend type を撮影日・コメントに限定する。
+- 他 owner photo の存在が漏れる — owner/plant/photo scoped lookup と 404 mapping を既存方針で維持する。

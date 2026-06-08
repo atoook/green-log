@@ -19,6 +19,13 @@ class PlantPhotoCreate(SQLModel):
     comment: str | None = None
 
 
+class PlantPhotoUpdate(SQLModel):
+    model_config = update_alias_config
+
+    taken_date: date | None = None
+    comment: str | None = None
+
+
 class PlantPhotoUploadRead(PlantPhotoSchema):
     object_key: str
 
