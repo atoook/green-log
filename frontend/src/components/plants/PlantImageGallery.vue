@@ -192,7 +192,7 @@ function toggleComment(photoId: string): void {
           class="grid gap-3 rounded-md bg-stone-50 p-3"
           @submit.prevent="submitMetadata"
         >
-          <div class="grid gap-2 sm:grid-cols-2">
+          <div class="grid gap-2">
             <label class="grid gap-1 text-sm font-semibold text-stone-800">
               撮影日
               <input
