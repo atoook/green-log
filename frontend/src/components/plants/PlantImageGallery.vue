@@ -143,7 +143,7 @@ function toggleComment(photoId: string): void {
 </script>
 
 <template>
-  <section class="grid gap-4 rounded-lg border border-stone-200 bg-white p-4" aria-labelledby="plant-gallery-title">
+  <section class="grid max-w-full gap-4 rounded-lg border border-stone-200 bg-white p-4" aria-labelledby="plant-gallery-title">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0">
         <p class="text-sm font-semibold text-leaf-700">成長記録</p>
@@ -154,7 +154,7 @@ function toggleComment(photoId: string): void {
       <p v-if="quotaLabel" class="text-sm font-semibold text-stone-700">{{ quotaLabel }}</p>
     </div>
 
-    <div class="grid gap-3 rounded-md bg-stone-50 p-3">
+    <div class="grid min-w-0 gap-3 rounded-md bg-stone-50 p-3">
       <div v-if="error" class="rounded-md bg-red-50 p-3 text-sm text-red-800">
         <p>{{ error.message }}</p>
         <button class="mt-2 font-semibold text-red-900" type="button" @click="emit('retry')">
@@ -172,7 +172,7 @@ function toggleComment(photoId: string): void {
         <li
           v-for="photo in photos"
           :key="photo.id"
-          class="grid gap-3 rounded-md border border-stone-200 bg-white p-3"
+          class="grid min-w-0 gap-3 rounded-md border border-stone-200 bg-white p-3"
         >
           <div class="relative">
             <img
@@ -203,7 +203,7 @@ function toggleComment(photoId: string): void {
                 撮影日
                 <input
                   v-model="editingTakenDate"
-                  class="rounded-md border border-stone-300 px-3 py-2 text-sm font-normal"
+                  class="w-full min-w-0 rounded-md border border-stone-300 px-3 py-2 text-sm font-normal"
                   type="date"
                   :disabled="isUpdatingMetadata"
                 />
@@ -212,7 +212,7 @@ function toggleComment(photoId: string): void {
                 コメント
                 <input
                   v-model="editingComment"
-                  class="rounded-md border border-stone-300 px-3 py-2 text-sm font-normal"
+                  class="w-full min-w-0 rounded-md border border-stone-300 px-3 py-2 text-sm font-normal"
                   type="text"
                   maxlength="120"
                   :disabled="isUpdatingMetadata"
@@ -304,13 +304,13 @@ function toggleComment(photoId: string): void {
       </ol>
     </div>
 
-    <form class="grid gap-3 rounded-md border border-leaf-200 bg-leaf-50/60 p-4" @submit.prevent="submitPhoto">
+    <form class="grid min-w-0 gap-3 rounded-md border border-leaf-200 bg-leaf-50/60 p-4" @submit.prevent="submitPhoto">
       <div class="grid gap-2">
         <label class="grid gap-1 text-sm font-semibold text-stone-800">
           画像
           <input
             ref="fileInput"
-            class="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
+            class="w-full min-w-0 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
             type="file"
             accept="image/jpeg,image/png,image/webp"
             :disabled="isAtLimit || isUploading"
@@ -324,7 +324,7 @@ function toggleComment(photoId: string): void {
           撮影日
           <input
             v-model="takenDate"
-            class="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
+            class="w-full min-w-0 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
             type="date"
             :disabled="isAtLimit || isUploading"
           />
@@ -333,7 +333,7 @@ function toggleComment(photoId: string): void {
           コメント
           <input
             v-model="comment"
-            class="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
+            class="w-full min-w-0 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
             type="text"
             maxlength="120"
             :disabled="isAtLimit || isUploading"
