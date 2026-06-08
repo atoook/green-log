@@ -32,10 +32,12 @@ const {
   isUploading,
   isSettingCover,
   isDeleting,
+  isUpdatingMetadata,
   error: galleryError,
   actionError: galleryActionError,
   loadPhotos,
   addPhoto,
+  updatePhotoMetadata,
   setCoverPhoto,
   deletePhoto,
 } = usePlantPhotos(numericPlantId, {
@@ -119,9 +121,11 @@ async function savePlant(input: PlantUpdateInput): Promise<void> {
       :is-uploading="isUploading"
       :is-setting-cover="isSettingCover"
       :is-deleting="isDeleting"
+      :is-updating-metadata="isUpdatingMetadata"
       :error="galleryError"
       :action-error="galleryActionError"
       @add="addPhoto"
+      @update-metadata="updatePhotoMetadata"
       @set-cover="setCoverPhoto"
       @delete="deletePhoto"
       @retry="loadPhotos"

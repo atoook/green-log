@@ -3,6 +3,7 @@ import type {
   PlantPhoto,
   PlantPhotoCreateInput,
   PlantPhotoGallery,
+  PlantPhotoUpdateInput,
   PlantPhotoUploadResult,
 } from '../types/plantPhoto'
 
@@ -10,6 +11,11 @@ export interface PlantPhotosApiClient {
   uploadPhoto(input: PlantPhotoUploadInput): Promise<PlantPhotoUploadResult>
   listPlantPhotos(plantId: number): Promise<PlantPhotoGallery>
   registerPlantPhoto(plantId: number, input: PlantPhotoCreateInput): Promise<PlantPhoto>
+  updatePlantPhotoMetadata(
+    plantId: number,
+    photoId: string,
+    input: PlantPhotoUpdateInput,
+  ): Promise<PlantPhoto>
   setCoverPhoto(plantId: number, photoId: string): Promise<PlantPhotoGallery>
   deletePlantPhoto(plantId: number, photoId: string): Promise<PlantPhoto>
 }
@@ -44,6 +50,17 @@ export function createPlantPhotosApiClient(
     ): Promise<PlantPhoto> {
       return apiClient.request<PlantPhoto>(`/plants/${plantId}/photos`, {
         method: 'POST',
+        body: JSON.stringify(input),
+      })
+    },
+
+    updatePlantPhotoMetadata(
+      plantId: number,
+      photoId: string,
+      input: PlantPhotoUpdateInput,
+    ): Promise<PlantPhoto> {
+      return apiClient.request<PlantPhoto>(`/plants/${plantId}/photos/${photoId}`, {
+        method: 'PATCH',
         body: JSON.stringify(input),
       })
     },
