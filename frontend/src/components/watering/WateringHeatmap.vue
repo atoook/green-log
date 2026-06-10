@@ -255,7 +255,7 @@ function selectDay(day: WateringHeatmapDay): void {
       </div>
 
       <div class="grid gap-4 md:grid-cols-[max-content_360px] md:items-start md:justify-start">
-        <div class="min-w-0 max-w-full overflow-x-auto px-1 pb-2 pt-1">
+        <div class="min-w-0 max-w-full overflow-x-visible px-1 pb-2 pt-1">
           <div class="grid w-max gap-2">
             <div
               class="grid gap-1"
