@@ -67,19 +67,9 @@ function serverErrorMessage(error: ApiError): string {
 
 <template>
   <form class="grid gap-4 rounded-lg border border-stone-200 bg-white p-4" @submit.prevent="submitForm">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div class="min-w-0">
-        <p class="text-sm font-semibold text-leaf-700">植物の記録</p>
-        <h1 class="mt-1 break-words text-2xl font-semibold text-stone-950">植物情報を編集</h1>
-      </div>
-      <button
-        class="w-full rounded-md border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-60 sm:w-auto"
-        type="button"
-        :disabled="isSaving"
-        @click="emit('cancel')"
-      >
-        取り消し
-      </button>
+    <div class="min-w-0">
+      <p class="text-sm font-semibold text-leaf-700">植物の記録</p>
+      <h1 class="mt-1 break-words text-2xl font-semibold text-stone-950">植物情報を編集</h1>
     </div>
 
     <div class="grid gap-3">
@@ -105,12 +95,22 @@ function serverErrorMessage(error: ApiError): string {
       {{ fieldError || (serverError ? serverErrorMessage(serverError) : '') }}
     </p>
 
-    <button
-      class="w-full rounded-md bg-leaf-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
-      type="submit"
-      :disabled="isSaving"
-    >
-      {{ isSaving ? '保存しています' : '保存する' }}
-    </button>
+    <div class="grid w-full gap-2 pt-1">
+      <button
+        class="w-full rounded-md bg-leaf-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
+        type="submit"
+        :disabled="isSaving"
+      >
+        {{ isSaving ? '保存しています' : '保存する' }}
+      </button>
+      <button
+        class="w-full rounded-md border border-stone-300 px-4 py-2 font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+        type="button"
+        :disabled="isSaving"
+        @click="emit('cancel')"
+      >
+        キャンセル
+      </button>
+    </div>
   </form>
 </template>
