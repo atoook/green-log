@@ -95,7 +95,8 @@ test('WateringHeatmap shows period, month and weekday axes, strength legend, dat
 test('WateringHeatmap keeps mobile layout readable without scope creep controls', async () => {
   const source = await readSource('src/components/watering/WateringHeatmap.vue')
 
-  assert.match(source, /overflow-x-auto/)
+  assert.doesNotMatch(source, /overflow-x-auto/)
+  assert.match(source, /overflow-x-visible/)
   assert.match(source, /heatmapGridStyle/)
   assert.match(source, /repeat\(\$\{heatmapWeeks\.value\.length\}, 1rem\)/)
   assert.match(source, /weekdayRows/)

@@ -199,16 +199,16 @@ function toggleComment(photoId: string): void {
             @submit.prevent="submitMetadata"
           >
             <div class="grid gap-2">
-              <label class="grid gap-1 text-sm font-semibold text-stone-800">
+              <label class="grid min-w-0 gap-1 text-sm font-semibold text-stone-800">
                 撮影日
                 <input
                   v-model="editingTakenDate"
-                  class="w-full min-w-0 rounded-md border border-stone-300 px-3 py-2 text-sm font-normal"
+                  class="box-border w-full min-w-0 max-w-full rounded-md border border-stone-300 px-3 py-2 text-sm font-normal"
                   type="date"
                   :disabled="isUpdatingMetadata"
                 />
               </label>
-              <label class="grid gap-1 text-sm font-semibold text-stone-800">
+              <label class="grid min-w-0 gap-1 text-sm font-semibold text-stone-800">
                 コメント
                 <input
                   v-model="editingComment"
@@ -306,7 +306,7 @@ function toggleComment(photoId: string): void {
 
     <form class="grid min-w-0 gap-3 rounded-md border border-leaf-200 bg-leaf-50/60 p-4" @submit.prevent="submitPhoto">
       <div class="grid gap-2">
-        <label class="grid gap-1 text-sm font-semibold text-stone-800">
+        <label class="grid min-w-0 gap-1 text-sm font-semibold text-stone-800">
           画像
           <input
             ref="fileInput"
@@ -320,16 +320,16 @@ function toggleComment(photoId: string): void {
       </div>
 
       <div class="grid gap-2 sm:grid-cols-2">
-        <label class="grid gap-1 text-sm font-semibold text-stone-800">
+        <label class="grid min-w-0 gap-1 text-sm font-semibold text-stone-800">
           撮影日
           <input
             v-model="takenDate"
-            class="w-full min-w-0 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
+            class="box-border w-full min-w-0 max-w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
             type="date"
             :disabled="isAtLimit || isUploading"
           />
         </label>
-        <label class="grid gap-1 text-sm font-semibold text-stone-800">
+        <label class="grid min-w-0 gap-1 text-sm font-semibold text-stone-800">
           コメント
           <input
             v-model="comment"

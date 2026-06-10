@@ -85,11 +85,12 @@ async function verifyEditFormStates(PlantEditForm, samplePlant) {
     '家に来た日',
     '水やり周期',
     'メモ',
-    '取り消し',
+    'キャンセル',
     '保存する',
   ]) {
     assert.match(idle, new RegExp(expectedText))
   }
+  assert.doesNotMatch(idle, /取り消し/)
   for (const outOfScopeText of ['種類', 'species', 'ownerUserId', 'owner_user_id']) {
     assert.doesNotMatch(idle, new RegExp(outOfScopeText))
   }
@@ -217,15 +218,21 @@ async function verifyDetailComposable(usePlantDetail, samplePlant) {
 }
 
 async function verifyPageIntegration() {
-  const source = await readFile(new URL('../src/pages/PlantDetailPage.vue', import.meta.url), 'utf8')
-  assert.match(source, /v-if="plant && isEditing"/)
-  assert.match(source, /@edit="startEditing"/)
-  assert.match(source, /@submit="savePlant"/)
-  assert.match(source, /@cancel="cancelEditing"/)
-  assert.match(source, /const updated = await updatePlant\(input\)/)
-  assert.match(source, /isEditing\.value = false/)
-  assert.match(source, /await loadWatering\(\)/)
-  assert.doesNotMatch(source, /recordWatering\(input/)
+  const [pageSource, formSource] = await Promise.all([
+    readFile(new URL('../src/pages/PlantDetailPage.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/components/plants/PlantEditForm.vue', import.meta.url), 'utf8'),
+  ])
+  assert.match(pageSource, /v-if="plant && isEditing"/)
+  assert.match(pageSource, /@edit="startEditing"/)
+  assert.match(pageSource, /@submit="savePlant"/)
+  assert.match(pageSource, /@cancel="cancelEditing"/)
+  assert.match(pageSource, /const updated = await updatePlant\(input\)/)
+  assert.match(pageSource, /isEditing\.value = false/)
+  assert.match(pageSource, /await loadWatering\(\)/)
+  assert.doesNotMatch(pageSource, /recordWatering\(input/)
+  assert.match(formSource, /<div class="grid w-full gap-2 pt-1">[\s\S]*type="submit"[\s\S]*保存する[\s\S]*type="button"[\s\S]*キャンセル/)
+  assert.match(formSource, /class="w-full rounded-md border border-stone-300/)
+  assert.doesNotMatch(formSource, /sm:w-auto/)
 }
 
 function apiError(type) {
